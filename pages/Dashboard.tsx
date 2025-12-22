@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Course } from '../types';
+import { User, Course, UserRole } from '../types';
 
 interface DashboardProps {
   user: User;
@@ -9,6 +9,118 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
+  // ----------------------------------------------------------------------
+  // VIEW: GURU / SUPERVISOR / ADMIN
+  // ----------------------------------------------------------------------
+  if (user.role !== UserRole.STUDENT) {
+      return (
+          <div className="space-y-8 animate-in fade-in duration-500">
+             {/* Header Section */}
+             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
+                <div>
+                    <div className="flex items-center space-x-3 mb-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                            user.role === UserRole.TEACHER ? 'bg-indigo-100 text-indigo-700' : 
+                            user.role === UserRole.SUPERVISOR ? 'bg-amber-100 text-amber-700' : 'bg-slate-800 text-white'
+                        }`}>
+                            {user.role} Dashboard
+                        </span>
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-800">Selamat Datang, {user.name}</h1>
+                    <p className="text-slate-500 mt-1">
+                        {user.role === UserRole.TEACHER 
+                            ? "Pantau aktivitas siswa dan kelola materi pembelajaran Anda." 
+                            : "Monitoring kinerja madrasah dan statistik pembelajaran global."}
+                    </p>
+                </div>
+                
+                {/* Quick Stats for Non-Students */}
+                <div className="flex gap-4">
+                     <div className="text-right">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Siswa Aktif</p>
+                        <p className="text-3xl font-black text-emerald-600">324</p>
+                     </div>
+                     <div className="w-px h-12 bg-slate-200 hidden md:block"></div>
+                     <div className="text-right">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Modul</p>
+                        <p className="text-3xl font-black text-slate-700">{courses.length}</p>
+                     </div>
+                </div>
+             </div>
+
+             {/* Role Specific Actions */}
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Card 1: Monitoring */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">
+                        <i className="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                    <h3 className="font-bold text-slate-800">Monitoring & Statistik</h3>
+                    <p className="text-sm text-slate-500 mt-2 mb-4">
+                        Lihat grafik penyelesaian UKBM siswa secara real-time.
+                    </p>
+                    <Link to="/monitoring" className="text-blue-600 text-sm font-bold hover:underline">Buka Monitoring &rarr;</Link>
+                </div>
+
+                {/* Card 2: Content Management (Guru Only) */}
+                {user.role === UserRole.TEACHER && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-4">
+                            <i className="fa-solid fa-pen-to-square text-xl"></i>
+                        </div>
+                        <h3 className="font-bold text-slate-800">Input Modul & KB</h3>
+                        <p className="text-sm text-slate-500 mt-2 mb-4">
+                            Buat atau edit materi ajar, soal diagnostik, dan tes sumatif.
+                        </p>
+                        <Link to="/content-mgmt" className="text-purple-600 text-sm font-bold hover:underline">Kelola Konten &rarr;</Link>
+                    </div>
+                )}
+                
+                {/* Card 3: User Management (Admin Only) */}
+                {user.role === UserRole.SUPER_ADMIN && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-4">
+                            <i className="fa-solid fa-users-gear text-xl"></i>
+                        </div>
+                        <h3 className="font-bold text-slate-800">Manajemen User</h3>
+                        <p className="text-sm text-slate-500 mt-2 mb-4">
+                            Tambah/Hapus akun guru dan siswa, reset password.
+                        </p>
+                        <Link to="/users" className="text-slate-600 text-sm font-bold hover:underline">Atur Pengguna &rarr;</Link>
+                    </div>
+                )}
+
+                {/* Card 4: Grading (Guru Only) */}
+                {user.role === UserRole.TEACHER && (
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
+                            <i className="fa-solid fa-marker text-xl"></i>
+                        </div>
+                        <h3 className="font-bold text-slate-800">Validasi Nilai</h3>
+                        <p className="text-sm text-slate-500 mt-2 mb-4">
+                            Periksa hasil analisis siswa (HOTS) dan beri umpan balik.
+                        </p>
+                        <Link to="/grading" className="text-emerald-600 text-sm font-bold hover:underline">Mulai Menilai &rarr;</Link>
+                    </div>
+                )}
+             </div>
+
+             {/* Placeholder for Charts */}
+             <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center py-20">
+                 <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-300">
+                    <i className="fa-solid fa-chart-area text-4xl"></i>
+                 </div>
+                 <h3 className="font-bold text-slate-400">Area Grafik Statistik (Coming Soon)</h3>
+                 <p className="text-sm text-slate-400 mt-2">Visualisasi data kinerja madrasah akan muncul di sini.</p>
+             </div>
+          </div>
+      );
+  }
+
+  // ----------------------------------------------------------------------
+  // VIEW: STUDENT (EXISTING)
+  // ----------------------------------------------------------------------
+
   // 1. Calculate Real Statistics
   const stats = useMemo(() => {
     let totalKBs = 0;
@@ -38,11 +150,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
   }, [courses]);
 
   // 2. Find "Next Step" (Logic for Linear Path)
-  // Finds the first course -> first module -> first KB that is NOT completed.
   const nextStep = useMemo(() => {
     for (const course of courses) {
       for (const module of course.modules) {
-        // Check Diagnostic First
         if (!module.diagnosticSubmitted) {
             return {
                 type: 'diagnostic',
@@ -54,8 +164,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                 bg: 'bg-amber-100'
             };
         }
-
-        // Check KBs
         for (const kb of module.kbs) {
             if (!kb.isCompleted) {
                 return {
@@ -69,8 +177,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                 };
             }
         }
-
-        // Check Summative
         if (!module.summativeSubmitted) {
              return {
                 type: 'summative',
@@ -169,7 +275,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                 Log Aktivitas Belajar
             </h3>
             <div className="space-y-4">
-                 {/* This would ideally come from an activity log array, using calculation for now */}
                  <div className="flex items-center justify-between pb-3 border-b border-slate-50">
                     <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">

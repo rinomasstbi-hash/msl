@@ -13,6 +13,7 @@ import DiagnosticTest from './pages/DiagnosticTest';
 import CoursesPage from './pages/CoursesPage';
 import GradesPage from './pages/GradesPage';
 import AssignmentUpload from './pages/AssignmentUpload';
+import LoginPage from './pages/LoginPage';
 import * as api from './services/api';
 import { User, Course } from './types';
 
@@ -28,20 +29,40 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       api.initializeData(); // Seed data if it doesn't exist
-      const [userData, coursesData] = await Promise.all([
-        api.getUser(),
-        api.getCourses(),
-      ]);
-      setUser(userData);
-      setCourses(coursesData);
-      // Initialize dropdown with user's actual semester
-      if (userData.semester) {
-        setSelectedSemester(userData.semester);
+      
+      // Load User Session
+      const userData = await api.getUser();
+      
+      if (userData) {
+          const coursesData = await api.getCourses();
+          setUser(userData);
+          setCourses(coursesData);
+          if (userData.semester) {
+            setSelectedSemester(userData.semester);
+          }
       }
+      
       setIsLoading(false);
     };
     loadData();
   }, []);
+
+  const handleLoginSuccess = async (loggedInUser: User) => {
+      setUser(loggedInUser);
+      if (loggedInUser.semester) {
+        setSelectedSemester(loggedInUser.semester);
+      }
+      setIsLoading(true);
+      const coursesData = await api.getCourses();
+      setCourses(coursesData);
+      setIsLoading(false);
+  };
+
+  const handleLogout = () => {
+      api.clearSession();
+      setUser(null);
+      setCourses([]);
+  };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -84,15 +105,20 @@ const App: React.FC = () => {
       }
   };
   
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
             <i className="fa-solid fa-spinner fa-spin text-4xl text-emerald-600"></i>
-            <p className="mt-4 font-semibold text-slate-700">Memuat Data Pembelajaran...</p>
+            <p className="mt-4 font-semibold text-slate-700">Memuat Sistem...</p>
         </div>
       </div>
     );
+  }
+
+  // --- AUTH CHECK ---
+  if (!user) {
+      return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   // Logic: Check if the selected semester matches the user's active semester
@@ -108,6 +134,7 @@ const App: React.FC = () => {
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
           disabled={!isActiveSemester}
+          onLogout={handleLogout}
         />
         
         {/* Mobile Backdrop */}
@@ -148,30 +175,45 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <Route path="/" element={<Dashboard user={user} courses={courses} />} />
-                  <Route path="/courses" element={<CoursesPage courses={courses} />} />
-                  <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
-                  <Route 
-                    path="/kb/:courseId/:kbId" 
-                    element={<KBView courses={courses} onCompleteKB={handleCompleteKB} onResetKB={handleResetKB} />} 
-                  />
                   
-                  <Route 
-                    path="/tugas/:courseId/:moduleId" 
-                    element={<AssignmentUpload courses={courses} onSubmitAssignment={handleAssignmentSubmit} />} 
-                  />
-
-                  <Route 
-                    path="/test/sumatif/:courseId/:moduleId" 
-                    element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} onStartRemedial={handleRemedialStart} />} 
-                  />
-                  
-                  <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
-                  
-                  <Route path="/grades" element={<GradesPage courses={courses} />} />
-                  
-                  <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
-                  <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />
+                  {/* COMMON ROUTES */}
                   <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />
+
+                  {/* STUDENT SPECIFIC ROUTES */}
+                  {user.role === 'STUDENT' && (
+                    <>
+                        <Route path="/courses" element={<CoursesPage courses={courses} />} />
+                        <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
+                        <Route 
+                            path="/kb/:courseId/:kbId" 
+                            element={<KBView courses={courses} onCompleteKB={handleCompleteKB} onResetKB={handleResetKB} />} 
+                        />
+                        <Route 
+                            path="/tugas/:courseId/:moduleId" 
+                            element={<AssignmentUpload courses={courses} onSubmitAssignment={handleAssignmentSubmit} />} 
+                        />
+                        <Route 
+                            path="/test/sumatif/:courseId/:moduleId" 
+                            element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} onStartRemedial={handleRemedialStart} />} 
+                        />
+                        <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
+                        <Route path="/grades" element={<GradesPage courses={courses} />} />
+                        <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
+                    </>
+                  )}
+
+                  {/* TEACHER / SUPERVISOR / ADMIN ROUTES */}
+                  {user.role !== 'STUDENT' && (
+                    <>
+                        <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />
+                        <Route path="/content-mgmt" element={<ComingSoon title="Kelola Modul & KB" icon="fa-pen-to-square" />} />
+                        <Route path="/grading" element={<ComingSoon title="Input Nilai Manual" icon="fa-marker" />} />
+                        <Route path="/teacher-perf" element={<ComingSoon title="Kinerja Guru" icon="fa-user-tie" />} />
+                        <Route path="/users" element={<ComingSoon title="Manajemen User" icon="fa-users-gear" />} />
+                        <Route path="/settings" element={<ComingSoon title="Pengaturan App" icon="fa-gears" />} />
+                    </>
+                  )}
+
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </>
               )}

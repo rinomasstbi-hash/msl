@@ -1,10 +1,10 @@
 
 import { User, Course, KKTP } from '../types';
-import { MOCK_USER, MOCK_COURSES } from './seedData';
+import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYD1ZUFbbWMEUCccr_bYwXlz5U8rNxk8nQ2ww8sTbJwbMEx_cpVXxvDYMQSVaGZGA/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytcQ0VrgfO0x9_CsWMq4hZN1yy5JV7eIQwNAFtv3MBeFUq-oKeSOMoAW5ECyedtgk/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
@@ -31,11 +31,73 @@ const setLocalData = <T>(key: string, value: T): void => {
   }
 };
 
+export const clearSession = (): void => {
+  window.localStorage.removeItem(USER_KEY);
+  // Keep courses data cached, but maybe needed to clear if different user? 
+  // For now we keep it to speed up demo
+};
+
+// --- AUTH SERVICE ---
+export const login = async (email: string, password: string): Promise<User | null> => {
+  
+  // 1. PRIORITAS UTAMA: Cek ke Database Google Sheet (Cloud)
+  if (GOOGLE_SCRIPT_URL) {
+      try {
+          // Mengirim kredensial ke Google Script untuk diverifikasi
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                  action: 'login', // Action Login hanya cek Sheet 'Users'
+                  email: email,
+                  password: password
+              })
+          });
+          
+          const result = await response.json();
+          
+          // Jika Google Script mengembalikan success: true dan data user
+          if (result.success && result.user) {
+              const user = result.user;
+              setLocalData(USER_KEY, user);
+              return user;
+          } 
+          
+          // SECURITY UPDATE:
+          // Jika koneksi sukses tapi user TIDAK ditemukan atau password salah di Cloud,
+          // JANGAN lanjut cek data lokal. Langsung return null.
+          // Ini mencegah akun Mock login jika tidak ada di Sheet.
+          if (!result.success) {
+             console.log("Login ditolak oleh server Cloud.");
+             return null; 
+          }
+
+      } catch (e) {
+          console.warn("Gagal koneksi ke database akun cloud (Network Error). Mencoba data lokal...", e);
+          // HANYA jika terjadi Error Jaringan (Offline/Script Error), code akan lanjut ke bawah (Fallback).
+      }
+  }
+
+  // 2. FALLBACK: Cek Data Lokal (MOCK_AUTH_USERS)
+  // Hanya dieksekusi jika:
+  // a. GOOGLE_SCRIPT_URL kosong
+  // b. Terjadi Network Error (catch block di atas)
+  
+  await apiDelay(800); 
+  
+  // Password default lokal: '123456'
+  if (password === '123456') {
+    const foundUser = MOCK_AUTH_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (foundUser) {
+        setLocalData(USER_KEY, foundUser);
+        return foundUser;
+    }
+  }
+  return null;
+};
+
 // --- DATA MERGING STRATEGY (CRITICAL FOR LMS) ---
 /**
  * Merges the fresh structure from code (Seed Data) with the progress saved in DB.
- * This ensures if we add "UKBM 2" in code, it appears for the user even if their 
- * saved JSON in the cloud only knew about "UKBM 1".
  */
 const mergeCourseProgress = (seedCourses: Course[], savedCourses: Course[]): Course[] => {
   return seedCourses.map(seedCourse => {
@@ -100,44 +162,17 @@ export const initializeData = (): void => {
   if (storedVersion !== CURRENT_DATA_VERSION) {
     console.log(`Verison update (${CURRENT_DATA_VERSION}). Refreshing Seed Data structure.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
-    // Force refresh USER data to apply new Semester logic
-    setLocalData(USER_KEY, MOCK_USER);
+    // Note: We do NOT force reset User here to avoid logging them out unexpectedly
   }
-  
-  if (!getLocalData(USER_KEY)) {
-    setLocalData(USER_KEY, MOCK_USER);
-  }
-  // We do not force set COURSES_KEY here because getCourses() handles the merge now.
 };
 
 /**
- * FETCH USER
+ * FETCH USER (GET SESSION)
  */
-export const getUser = async (): Promise<User> => {
-  if (GOOGLE_SCRIPT_URL) {
-    try {
-      const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUser`, {
-        method: 'POST', 
-        body: JSON.stringify({ action: 'getUser' })
-      });
-      const data = await response.json();
-      
-      // Merge cloud user data with local mock structure if needed
-      return {
-        ...MOCK_USER,
-        ...data, // Spread cloud data to override mock data
-      };
-    } catch (e) {
-      console.warn("Gagal connect ke Spreadsheet, fallback ke LocalStorage", e);
-    }
-  }
-
+export const getUser = async (): Promise<User | null> => {
   await apiDelay(200);
+  // Just return what is in local storage (Session)
   const user = getLocalData<User>(USER_KEY);
-  if (!user) {
-      setLocalData(USER_KEY, MOCK_USER);
-      return MOCK_USER;
-  }
   return user;
 };
 
@@ -146,20 +181,23 @@ export const getUser = async (): Promise<User> => {
  */
 export const getCourses = async (): Promise<Course[]> => {
   let savedProgress: Course[] | null = null;
+  const user = getLocalData<User>(USER_KEY);
 
-  // 1. Try Cloud
-  if (GOOGLE_SCRIPT_URL) {
+  // 1. Try Cloud (Ambil Progress dari Sheet 'Progress' berdasarkan userId)
+  if (GOOGLE_SCRIPT_URL && user) {
     try {
-       // We use getUser because our backend currently packs 'savedProgress' inside the user response
-       const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUser`, {
+       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'getUser' })
+        body: JSON.stringify({ 
+            action: 'getProgress', // Action baru khusus ambil progress
+            userId: user.id 
+        })
       });
       const data = await response.json();
       
-      // Backend returns { ...user, savedProgress: [ ... ] }
-      if (data.savedProgress && Array.isArray(data.savedProgress)) {
-          console.log("Cloud progress found, syncing...");
+      // Backend returns { success: true, savedProgress: [ ... ] }
+      if (data.success && data.savedProgress && Array.isArray(data.savedProgress)) {
+          console.log("Cloud progress synced.");
           savedProgress = data.savedProgress;
       }
     } catch (e) {
@@ -173,7 +211,6 @@ export const getCourses = async (): Promise<Course[]> => {
   }
 
   // 3. MERGE: Seed Data (Structure) + Saved Progress (Status)
-  // This is the most important step to ensure UKBM 2 appears.
   const finalCourses = savedProgress 
     ? mergeCourseProgress(MOCK_COURSES, savedProgress)
     : MOCK_COURSES;
@@ -188,21 +225,32 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     // 1. Update Local Storage Immediately (Optimistic UI)
     setLocalData(USER_KEY, updatedUser);
 
-    // 2. Send to Cloud (Spreadsheet)
+    // 2. Send to Cloud (Spreadsheet 'Users')
     if (GOOGLE_SCRIPT_URL) {
       try {
-        // Strip out large fields if necessary, but currently we send everything except learningProgress
+        // PENTING: Kita memisahkan logic.
+        // learningProgress dihapus dari object user sebelum dikirim ke Sheet Users
+        // agar tidak membebani Sheet Users.
         const { learningProgress, ...userToSend } = updatedUser;
         
-        await fetch(GOOGLE_SCRIPT_URL, {
+        const response = await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
-            action: 'updateUser',
+            action: 'updateUser', // Masuk ke Sheet 'Users'
             user: userToSend
           })
         });
+
+        // Validasi respon dari server
+        const result = await response.json();
+        if (result.success) {
+            console.log("Database Profil (termasuk Email) berhasil diperbarui di Cloud.");
+        } else {
+            console.error("Gagal memperbarui Database:", result.message);
+        }
+
       } catch (e) {
-        console.error("Cloud update failed", e);
+        console.error("Cloud update failed (Network Error)", e);
       }
     } else {
         await apiDelay(300);
@@ -213,16 +261,18 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
 
 // --- SYNC HELPER ---
 const syncToCloud = async (courses: Course[]) => {
-  if (GOOGLE_SCRIPT_URL) {
+  // Only sync if logged in user is a STUDENT
+  const user = getLocalData<User>(USER_KEY);
+  if (user && user.role !== 'STUDENT') return; 
+
+  if (GOOGLE_SCRIPT_URL && user) {
     try {
-      const user = await getUser();
-      // We send the FULL courses object (structure + status) to cloud
-      // This will be stored as a JSON string in the 'learningProgress' column
+      // Kita kirim data ke Sheet 'Progress'
       await fetch(GOOGLE_SCRIPT_URL, {
          method: 'POST',
          body: JSON.stringify({
-           action: 'updateProgress',
-           user: { id: user.id },
+           action: 'updateProgress', // Masuk ke Sheet 'Progress'
+           userId: user.id,          // Key penghubung
            courses: courses 
          })
       });
@@ -258,8 +308,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
 
               // --- AUTO-GRADING LOGIC (DEMO ONLY) ---
               // Karena belum ada Guru, sistem memberi nilai otomatis agar progress bar berjalan.
-              // Nilai Resume: 92, Nilai Keaktifan: 90
-              // Jika sudah ada nilai sebelumnya, gunakan nilai tersebut (jangan override jadi 92 lagi).
               
               return {
                   ...module,

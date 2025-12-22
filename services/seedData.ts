@@ -1,20 +1,54 @@
 
 import { User, UserRole, Course } from '../types';
 
-export const MOCK_USER: User = {
-  id: 'std-001',
-  name: 'Ahmad Fauzi',
-  role: UserRole.STUDENT,
-  profileComplete: false, // Start with incomplete profile to test the gate
-  email: 'fauzi@mtsn4jombang.sch.id',
-  avatar: 'https://picsum.photos/200',
-  className: 'Kelas 8-A',
-  semester: 'Semester III', // Standardized for logic comparison
-  nisn: '',
-  address: '',
-  parentName: '',
-  parentPhone: ''
-};
+// --- AUTH DATA ---
+export const MOCK_AUTH_USERS: User[] = [
+  {
+    id: 'std-001',
+    name: 'Ahmad Fauzi',
+    email: 'siswa@msl.com', // Password: 123456
+    role: UserRole.STUDENT,
+    profileComplete: true,
+    avatar: 'https://ui-avatars.com/api/?name=Ahmad+Fauzi&background=10b981&color=fff',
+    className: 'Kelas 8-A',
+    semester: 'Semester III',
+    nisn: '1234567890',
+    address: 'Jombang',
+    parentName: 'Budi',
+    parentPhone: '08123'
+  },
+  {
+    id: 'tch-001',
+    name: 'Ust. Muhammad Ali, M.Pd',
+    email: 'guru@msl.com', // Password: 123456
+    role: UserRole.TEACHER,
+    profileComplete: true,
+    avatar: 'https://ui-avatars.com/api/?name=Muhammad+Ali&background=6366f1&color=fff',
+    className: 'Wali Kelas 8-A',
+    semester: 'Ganjil 2024/2025'
+  },
+  {
+    id: 'spv-001',
+    name: 'Drs. H. Purnomo (Kepala)',
+    email: 'kepala@msl.com', // Password: 123456
+    role: UserRole.SUPERVISOR,
+    profileComplete: true,
+    avatar: 'https://ui-avatars.com/api/?name=Purnomo&background=f59e0b&color=fff',
+    semester: 'Ganjil 2024/2025'
+  },
+  {
+    id: 'adm-001',
+    name: 'Super Admin IT',
+    email: 'admin@msl.com', // Password: 123456
+    role: UserRole.SUPER_ADMIN,
+    profileComplete: true,
+    avatar: 'https://ui-avatars.com/api/?name=Admin+IT&background=0f172a&color=fff',
+    semester: 'System Master'
+  }
+];
+
+// Fallback user if needed
+export const MOCK_USER = MOCK_AUTH_USERS[0];
 
 export const MOCK_DIAGNOSTIC_QUESTIONS = [
   {
