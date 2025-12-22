@@ -11,7 +11,7 @@ const GradesPage: React.FC<GradesPageProps> = ({ courses }) => {
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
 
   const processedData = useMemo(() => {
-    return courses.map(course => {
+    const data = courses.map(course => {
       const modules = course.modules.map(mod => {
         const kbCount = mod.kbs.length;
         const completedKbCount = mod.kbs.filter(k => k.isCompleted).length;
@@ -51,6 +51,9 @@ const GradesPage: React.FC<GradesPageProps> = ({ courses }) => {
         courseAvg: Math.round(courseAvg)
       };
     });
+
+    // Sort alphabetically by course name
+    return data.sort((a, b) => a.name.localeCompare(b.name));
   }, [courses]);
 
   // Calculate overall GPA

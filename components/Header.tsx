@@ -52,15 +52,7 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, on
 
       <div className="flex items-center space-x-4 md:space-x-6">
         
-        {/* Class Only (Semester moved to left dropdown) */}
-        {user.className && (
-            <div className="hidden lg:flex items-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-                <div className="text-right">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
-                    <span className="block text-sm font-bold text-slate-700">{user.className}</span>
-                </div>
-            </div>
-        )}
+        {/* Class Info Box Removed from here */}
 
         <button className="relative text-slate-500 hover:text-emerald-700 transition-colors hidden sm:block ml-2">
           <i className="fa-solid fa-bell text-xl"></i>
@@ -72,7 +64,10 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, on
         <Link to="/profile" className="flex items-center space-x-3 group cursor-pointer">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-emerald-700 transition-colors">{user.name}</p>
-            <p className="text-[10px] text-emerald-600 font-black uppercase mt-1">{user.role}</p>
+            {/* Display Role - Class Name */}
+            <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">
+                {user.role} {user.className && ` - ${user.className}`}
+            </p>
           </div>
           <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden shadow-md group-hover:ring-2 group-hover:ring-emerald-400 transition-all">
             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />

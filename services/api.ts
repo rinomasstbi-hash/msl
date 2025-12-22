@@ -4,7 +4,7 @@ import { MOCK_USER, MOCK_COURSES } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwJBaAA2i-gmoVM72DIsS5KfT0oppNAc3y8_tVQhmIqkQGqnxvP03R5CiDTYAEi4mc/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSglpuF-I-fi4Nt9vZyLFYDVARM4B_mVHb6A3DWU2-8Faz9j7XZ_FM46OsHht2JBE/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
@@ -113,13 +113,7 @@ export const getUser = async (): Promise<User> => {
       // Merge cloud user data with local mock structure if needed
       return {
         ...MOCK_USER,
-        id: data.id || MOCK_USER.id,
-        name: data.name || MOCK_USER.name,
-        role: data.role || MOCK_USER.role,
-        email: data.email || MOCK_USER.email,
-        profileComplete: data.profileComplete,
-        className: data.className || MOCK_USER.className,
-        semester: data.semester || MOCK_USER.semester
+        ...data, // Spread cloud data to override mock data
       };
     } catch (e) {
       console.warn("Gagal connect ke Spreadsheet, fallback ke LocalStorage", e);
@@ -144,21 +138,25 @@ export const getCourses = async (): Promise<Course[]> => {
   // 1. Try Cloud
   if (GOOGLE_SCRIPT_URL) {
     try {
+       // We use getUser because our backend currently packs 'savedProgress' inside the user response
        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getUser`, {
         method: 'POST',
         body: JSON.stringify({ action: 'getUser' })
       });
       const data = await response.json();
+      
+      // Backend returns { ...user, savedProgress: [ ... ] }
       if (data.savedProgress && Array.isArray(data.savedProgress)) {
+          console.log("Cloud progress found, syncing...");
           savedProgress = data.savedProgress;
       }
     } catch (e) {
-      console.warn("Failed to sync progress from cloud");
+      console.warn("Failed to sync progress from cloud, using local");
     }
   }
 
-  // 2. Try LocalStorage if Cloud failed
-  if (!savedProgress) {
+  // 2. Try LocalStorage if Cloud failed or empty
+  if (!savedProgress || savedProgress.length === 0) {
       savedProgress = getLocalData<Course[]>(COURSES_KEY);
   }
 
@@ -175,26 +173,29 @@ export const getCourses = async (): Promise<Course[]> => {
 };
 
 export const updateUser = async (updatedUser: User): Promise<User> => {
+    // 1. Update Local Storage Immediately (Optimistic UI)
+    setLocalData(USER_KEY, updatedUser);
+
+    // 2. Send to Cloud (Spreadsheet)
     if (GOOGLE_SCRIPT_URL) {
       try {
+        // Strip out large fields if necessary, but currently we send everything except learningProgress
+        const { learningProgress, ...userToSend } = updatedUser;
+        
         await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
             action: 'updateUser',
-            user: {
-              id: updatedUser.id,
-              profileComplete: updatedUser.profileComplete,
-              // We can send other fields if needed
-            }
+            user: userToSend
           })
         });
       } catch (e) {
-        console.error("Cloud update failed");
+        console.error("Cloud update failed", e);
       }
+    } else {
+        await apiDelay(300);
     }
 
-    await apiDelay(300);
-    setLocalData(USER_KEY, updatedUser);
     return updatedUser;
 };
 
@@ -204,15 +205,16 @@ const syncToCloud = async (courses: Course[]) => {
     try {
       const user = await getUser();
       // We send the FULL courses object (structure + status) to cloud
-      // So next time it fetches, it has the latest structure too.
+      // This will be stored as a JSON string in the 'learningProgress' column
       await fetch(GOOGLE_SCRIPT_URL, {
          method: 'POST',
          body: JSON.stringify({
            action: 'updateProgress',
            user: { id: user.id },
-           courses: courses
+           courses: courses 
          })
       });
+      console.log("Progress synced to cloud");
     } catch (e) { console.error("Background sync failed", e); }
   }
 };

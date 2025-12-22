@@ -15,6 +15,12 @@ export interface User {
   email: string;
   className?: string; // e.g. "8-A"
   semester?: string;  // e.g. "Ganjil 2024/2025"
+  // New fields for Profile Persistence
+  nisn?: string;
+  address?: string;
+  parentName?: string;
+  parentPhone?: string;
+  learningProgress?: string; // JSON String stored in DB
 }
 
 export interface KB {

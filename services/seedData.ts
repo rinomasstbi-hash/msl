@@ -9,7 +9,11 @@ export const MOCK_USER: User = {
   email: 'fauzi@mtsn4jombang.sch.id',
   avatar: 'https://picsum.photos/200',
   className: 'Kelas 8-A',
-  semester: 'Semester III' // Standardized for logic comparison
+  semester: 'Semester III', // Standardized for logic comparison
+  nisn: '',
+  address: '',
+  parentName: '',
+  parentPhone: ''
 };
 
 export const MOCK_DIAGNOSTIC_QUESTIONS = [

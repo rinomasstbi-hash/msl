@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Course } from '../types';
 
@@ -8,6 +8,11 @@ interface CoursesPageProps {
 }
 
 const CoursesPage: React.FC<CoursesPageProps> = ({ courses }) => {
+  // Sort courses alphabetically by name
+  const sortedCourses = useMemo(() => {
+    return [...courses].sort((a, b) => a.name.localeCompare(b.name));
+  }, [courses]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
@@ -17,7 +22,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ courses }) => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
-          {courses.map(course => (
+          {sortedCourses.map(course => (
             <Link 
               key={course.id} 
               to={`/course/${course.id}`}
