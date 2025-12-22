@@ -1,18 +1,22 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import * as api from '../services/api';
 
 interface ProfileGateProps {
   user: User;
   onProfileUpdate: (user: User) => void;
+  onLogout?: () => void;
 }
 
-const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
+const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogout }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Check Role
+  const isAdmin = user.role === UserRole.SUPER_ADMIN;
+
   // Modes: View, EditProfile, ChangePassword
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -33,8 +37,12 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     agreed: user.profileComplete
   });
 
-  // Validasi form: Pastikan data wajib terisi
-  const isFormValid = formData.email && formData.address && formData.parentName && formData.phone && formData.agreed;
+  // Validasi form: 
+  // Jika Admin: Cukup Email yg wajib.
+  // Jika Siswa: Semua data wajib.
+  const isFormValid = isAdmin 
+    ? formData.email && formData.email.includes('@')
+    : formData.email && formData.address && formData.parentName && formData.phone && formData.agreed;
 
   // Deteksi perubahan email
   const isEmailChanged = user.email && formData.email !== user.email;
@@ -83,9 +91,17 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     try {
         const result = await api.changePassword(passData.oldPass, passData.newPass);
         if (result.success) {
-            alert("Password berhasil diubah!");
+            alert("Password berhasil diubah! Silakan login kembali dengan password baru.");
             setIsChangingPassword(false);
             setPassData({ oldPass: '', newPass: '', confirmPass: '' });
+            
+            // LOGOUT TRIGGER
+            if (onLogout) {
+                onLogout();
+            } else {
+                // Fallback
+                window.location.reload();
+            }
         } else {
             alert(`Gagal: ${result.message}`);
         }
@@ -249,6 +265,52 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
 
   // --- VIEW MODE (Read Only) ---
   if (user.profileComplete && !isEditing) {
+    // SPECIAL VIEW FOR ADMIN
+    if (isAdmin) {
+        return (
+            <div className="max-w-xl mx-auto space-y-8 py-10 animate-in fade-in duration-500">
+                <div className="text-center">
+                    <div className="relative inline-block mb-4">
+                        <img src={formData.avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg bg-emerald-50" />
+                        <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-white border-2 border-white">
+                            <i className="fa-solid fa-user-shield"></i>
+                        </div>
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-800">{user.name}</h1>
+                    <span className="mt-2 inline-block bg-slate-800 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Administrator System</span>
+                </div>
+
+                <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-6">
+                    <div>
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Login</label>
+                        <div className="flex items-center space-x-3 mt-1">
+                            <i className="fa-solid fa-envelope text-slate-300"></i>
+                            <p className="text-slate-700 font-bold text-lg">{user.email}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="border-t border-slate-100 pt-6 flex flex-col gap-3">
+                        <button
+                            onClick={() => setIsChangingPassword(true)}
+                            className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center space-x-2"
+                        >
+                            <i className="fa-solid fa-lock"></i>
+                            <span>Ganti Password</span>
+                        </button>
+                        <button
+                            onClick={() => setIsEditing(true)}
+                            className="w-full py-3 rounded-xl font-bold text-white bg-slate-800 hover:bg-slate-900 transition-colors shadow-lg flex items-center justify-center space-x-2"
+                        >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                            <span>Edit Email & Avatar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // NORMAL STUDENT VIEW
     return (
       <div className="max-w-2xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
         <div className="text-center">
@@ -322,7 +384,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     );
   }
 
-  // --- EDIT MODE ---
+  // --- EDIT MODE (SHARED) ---
   return (
     <div className="max-w-2xl mx-auto space-y-8 py-8">
       <div className="text-center">
@@ -360,13 +422,19 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
              )}
         </div>
 
-        <h1 className="text-2xl font-black text-slate-800">{isEditing ? 'Edit Profil Siswa' : 'Verifikasi Profil Siswa'}</h1>
+        <h1 className="text-2xl font-black text-slate-800">
+            {isEditing 
+                ? (isAdmin ? 'Edit Profil Admin' : 'Edit Profil Siswa') 
+                : (isAdmin ? 'Profil Administrator' : 'Verifikasi Profil')}
+        </h1>
         <p className="text-slate-500 mt-2">
-          {isEditing ? 'Klik foto di atas untuk mengganti Avatar.' : 'Lengkapi data berikut sebelum memulai pembelajaran.'}
+          {isEditing 
+            ? 'Klik foto di atas untuk mengganti Avatar.' 
+            : (isAdmin ? 'Kelola email dan keamanan akun.' : 'Lengkapi data berikut sebelum memulai pembelajaran.')}
         </p>
       </div>
 
-      {!isEditing && (
+      {!isEditing && !isAdmin && (
         <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
           <div className="flex items-start">
             <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-1 mr-3"></i>
@@ -380,37 +448,39 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-8">
         
-        {/* SECTION 1: DATA AKADEMIK (READ ONLY) */}
-        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
-                <i className="fa-solid fa-lock mr-2"></i>
-                Data Akademik (Ditetapkan Admin)
-             </h4>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Nama Lengkap</label>
-                    <input type="text" value={user.name} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+        {/* SECTION 1: DATA AKADEMIK (READ ONLY) - HIDE FOR ADMIN */}
+        {!isAdmin && (
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
+                    <i className="fa-solid fa-lock mr-2"></i>
+                    Data Akademik (Ditetapkan Admin)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500">Nama Lengkap</label>
+                        <input type="text" value={user.name} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500">NISN</label>
+                        <input type="text" value={user.nisn || '0000000000'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500">Kelas</label>
+                        <input type="text" value={user.className || '-'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500">Semester</label>
+                        <input type="text" value={user.semester || '-'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+                    </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">NISN</label>
-                    <input type="text" value={user.nisn || '0000000000'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Kelas</label>
-                    <input type="text" value={user.className || '-'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Semester</label>
-                    <input type="text" value={user.semester || '-'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
-                </div>
-             </div>
-        </div>
+            </div>
+        )}
 
         {/* SECTION 2: DATA KONTAK & PRIBADI (EDITABLE) */}
         <div>
              <h4 className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center">
                 <i className="fa-solid fa-pen-to-square mr-2"></i>
-                Data Pribadi & Kontak
+                Data Akun & Kontak
              </h4>
 
              {/* ALERT PERUBAHAN EMAIL */}
@@ -431,7 +501,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
 
              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Alamat Email</label>
+                    <label className="text-sm font-bold text-slate-700">Alamat Email Login</label>
                     <input 
                     type="email" 
                     value={formData.email}
@@ -440,75 +510,97 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
                     className={`w-full p-3 rounded-xl border focus:ring-2 focus:ring-emerald-500 transition-all outline-none ${isEmailChanged ? 'border-amber-400 bg-amber-50/50 text-amber-900 font-bold' : 'border-slate-200'}`}
                     />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700">Alamat Lengkap (Domisili)</label>
-                    <textarea 
-                        rows={3}
-                        value={formData.address}
-                        onChange={(e) => setFormData({...formData, address: e.target.value})}
-                        className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
-                        placeholder="Dusun..., Desa..., Kec. Jombang"
-                    ></textarea>
-                </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Nama Orang Tua/Wali</label>
-                        <input 
-                            type="text"
-                            value={formData.parentName}
-                            onChange={(e) => setFormData({...formData, parentName: e.target.value})}
-                            placeholder="Contoh: Budi Santoso" 
-                            className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Nomor HP Orang Tua/Wali</label>
-                        <input 
-                            type="tel"
-                            value={formData.phone}
-                            onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                            placeholder="Contoh: 081234567890" 
-                            className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
-                        />
-                    </div>
-                </div>
+                {/* HIDE FOR ADMIN */}
+                {!isAdmin && (
+                    <>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700">Alamat Lengkap (Domisili)</label>
+                            <textarea 
+                                rows={3}
+                                value={formData.address}
+                                onChange={(e) => setFormData({...formData, address: e.target.value})}
+                                className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none"
+                                placeholder="Dusun..., Desa..., Kec. Jombang"
+                            ></textarea>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700">Nama Orang Tua/Wali</label>
+                                <input 
+                                    type="text"
+                                    value={formData.parentName}
+                                    onChange={(e) => setFormData({...formData, parentName: e.target.value})}
+                                    placeholder="Contoh: Budi Santoso" 
+                                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700">Nomor HP Orang Tua/Wali</label>
+                                <input 
+                                    type="tel"
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                    placeholder="Contoh: 081234567890" 
+                                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
+                                />
+                            </div>
+                        </div>
+                    </>
+                )}
              </div>
         </div>
 
-        <div className="bg-emerald-50 p-4 rounded-xl space-y-4">
-           <h4 className="font-bold text-emerald-800 flex items-center">
-             <i className="fa-solid fa-file-signature mr-2 text-emerald-600"></i>
-             Pakta Integritas Belajar
-           </h4>
-           <div className="text-sm text-emerald-700 space-y-2 max-h-32 overflow-y-auto custom-scrollbar p-2 bg-white/50 rounded-lg border border-emerald-100">
-             <p>1. Saya bersedia mengikuti seluruh alur pembelajaran secara linear dan tertib.</p>
-             <p>2. Saya tidak akan melakukan plagiasi (Copy-Paste) dalam pembuatan Resume.</p>
-             <p>3. Saya akan menjaga etika dalam forum diskusi dengan guru dan teman sejawat.</p>
-             <p>4. Saya menyadari bahwa sistem mencatat setiap durasi aktivitas belajar saya.</p>
-             <p>5. Data yang saya isikan di atas adalah benar dan dapat dipertanggungjawabkan.</p>
-           </div>
-           <label className="flex items-center space-x-3 cursor-pointer group p-2 hover:bg-emerald-100 rounded-lg transition-colors">
-             <input 
-              type="checkbox" 
-              checked={formData.agreed}
-              onChange={(e) => setFormData({...formData, agreed: e.target.checked})}
-              className="w-5 h-5 accent-emerald-600 cursor-pointer" 
-             />
-             <span className="text-sm font-bold text-emerald-800 group-hover:text-emerald-900">Saya setuju dan siap menaati tata tertib di atas.</span>
-           </label>
-        </div>
+        {/* SECTION 3: PAKTA INTEGRITAS - HIDE FOR ADMIN */}
+        {!isAdmin && (
+            <div className="bg-emerald-50 p-4 rounded-xl space-y-4">
+            <h4 className="font-bold text-emerald-800 flex items-center">
+                <i className="fa-solid fa-file-signature mr-2 text-emerald-600"></i>
+                Pakta Integritas Belajar
+            </h4>
+            <div className="text-sm text-emerald-700 space-y-2 max-h-32 overflow-y-auto custom-scrollbar p-2 bg-white/50 rounded-lg border border-emerald-100">
+                <p>1. Saya bersedia mengikuti seluruh alur pembelajaran secara linear dan tertib.</p>
+                <p>2. Saya tidak akan melakukan plagiasi (Copy-Paste) dalam pembuatan Resume.</p>
+                <p>3. Saya akan menjaga etika dalam forum diskusi dengan guru dan teman sejawat.</p>
+                <p>4. Saya menyadari bahwa sistem mencatat setiap durasi aktivitas belajar saya.</p>
+                <p>5. Data yang saya isikan di atas adalah benar dan dapat dipertanggungjawabkan.</p>
+            </div>
+            <label className="flex items-center space-x-3 cursor-pointer group p-2 hover:bg-emerald-100 rounded-lg transition-colors">
+                <input 
+                type="checkbox" 
+                checked={formData.agreed}
+                onChange={(e) => setFormData({...formData, agreed: e.target.checked})}
+                className="w-5 h-5 accent-emerald-600 cursor-pointer" 
+                />
+                <span className="text-sm font-bold text-emerald-800 group-hover:text-emerald-900">Saya setuju dan siap menaati tata tertib di atas.</span>
+            </label>
+            </div>
+        )}
 
         <div className="flex items-center space-x-4">
+          {/* Admin Change Password Button in Form Mode (Initial Setup or Editing) */}
+          {isAdmin && !isEditing && (
+             <button
+              type="button"
+              onClick={() => setIsChangingPassword(true)}
+              className="w-full py-4 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center space-x-2"
+            >
+              <i className="fa-solid fa-lock"></i>
+              <span>Ubah Password</span>
+            </button>
+          )}
+
           {isEditing && (
              <button
               type="button"
               onClick={handleCancelEdit}
-              className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+              className="w-full py-4 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
             >
               Batal
             </button>
           )}
+          
           <button 
             type="submit"
             disabled={!isFormValid || isProcessingImg}
@@ -523,7 +615,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
                 </>
             ) : (
                 <>
-                    <span>{isEditing ? 'Simpan Perubahan' : 'Simpan & Buka Akses'}</span>
+                    <span>{isEditing ? 'Simpan Perubahan' : 'Simpan'}</span>
                     <i className={`fa-solid ${isEditing ? 'fa-floppy-disk' : 'fa-unlock-keyhole'}`}></i>
                 </>
             )}

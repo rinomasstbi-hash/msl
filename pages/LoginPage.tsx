@@ -22,7 +22,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       if (user) {
         onLoginSuccess(user);
       } else {
-        setError('Email atau password salah. Coba: siswa@msl.com / 123456');
+        setError('Email atau password salah.');
       }
     } catch (err) {
       setError('Terjadi kesalahan jaringan.');
@@ -43,7 +43,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               <i className="fa-solid fa-graduation-cap text-4xl"></i>
             </div>
             <h1 className="text-2xl font-black text-white">Madrasah Smart Learning</h1>
-            <p className="text-emerald-200 text-sm mt-1">MTsN 4 Jombang</p>
+            <p className="text-emerald-200 text-sm mt-1">Digitalisasi Pembelajaran MTsN 4 Jombang</p>
           </div>
         </div>
 

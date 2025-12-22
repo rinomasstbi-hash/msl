@@ -123,17 +123,22 @@ const App: React.FC = () => {
 
   // Logic: Check if the selected semester matches the user's active semester
   const isActiveSemester = user.semester === selectedSemester;
+  
+  // LOGIC UPDATE: View hanya dikunci jika user adalah STUDENT dan semester tidak sesuai.
+  // Role lain (Admin, Guru, Supervisor) bebas melihat semester lain tanpa dikunci.
+  const isViewLocked = user.role === 'STUDENT' && !isActiveSemester;
+
   const isProfileLocked = !user.profileComplete;
 
   return (
     <HashRouter>
       <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
-        {/* Sidebar with mobile state - Grayed out if inactive semester */}
+        {/* Sidebar with mobile state - Grayed out only if view is locked */}
         <Sidebar 
           role={user.role} 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
-          disabled={!isActiveSemester}
+          disabled={isViewLocked}
           onLogout={handleLogout}
         />
         
@@ -154,9 +159,9 @@ const App: React.FC = () => {
             onSemesterChange={setSelectedSemester}
           />
           
-          {/* Main content area - Applies gray effect if inactive semester */}
-          <main className={`flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar transition-all duration-300 ${!isActiveSemester ? 'grayscale opacity-40 pointer-events-none select-none' : ''}`}>
-            {!isActiveSemester && (
+          {/* Main content area - Applies gray effect if view is locked */}
+          <main className={`flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar transition-all duration-300 ${isViewLocked ? 'grayscale opacity-40 pointer-events-none select-none' : ''}`}>
+            {isViewLocked && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="bg-white/90 p-6 rounded-2xl shadow-2xl text-center border-2 border-slate-200">
                         <i className="fa-solid fa-lock text-4xl text-slate-400 mb-4"></i>
@@ -169,7 +174,7 @@ const App: React.FC = () => {
             <Routes>
               {isProfileLocked ? (
                 <>
-                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />
+                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} onLogout={handleLogout} />} />
                   <Route path="*" element={<Navigate to="/profile" replace />} />
                 </>
               ) : (
@@ -177,7 +182,7 @@ const App: React.FC = () => {
                   <Route path="/" element={<Dashboard user={user} courses={courses} />} />
                   
                   {/* COMMON ROUTES */}
-                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />
+                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} onLogout={handleLogout} />} />
 
                   {/* STUDENT SPECIFIC ROUTES */}
                   {user.role === 'STUDENT' && (
