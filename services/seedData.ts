@@ -97,6 +97,8 @@ const createBasicCourse = (id: string, name: string, teacherId: string, moduleTi
       resumeScore: 0,
       tugasScore: 0,
       keaktifanScore: 0,
+      // Default Generic HOTS Question
+      tugasQuestion: `Lakukan analisis mendalam mengenai materi ${moduleTitle}. Hubungkan konsep-konsep utama yang telah Anda pelajari di setiap Kegiatan Belajar (KB) menjadi satu kesatuan pemahaman (benang merah). Berikan contoh penerapan nyata dalam kehidupan sehari-hari yang belum dibahas di materi.`,
       availableAt: '2023-10-01T00:00:00Z',
       kbs: [
         {
@@ -134,6 +136,8 @@ export const MOCK_COURSES: Course[] = [
         resumeScore: 88, 
         tugasScore: 92,
         keaktifanScore: 95,
+        // Specific HOTS Question
+        tugasQuestion: 'Analisis hubungan antara Teorema Pythagoras dengan konsep Luas Persegi. Jelaskan bagaimana pembuktian geometris Pythagoras terbentuk dari susunan persegi, dan simpulkan mengapa teorema ini hanya berlaku mutlak pada segitiga siku-siku. Berikan argumen kritis Anda.',
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
@@ -170,6 +174,7 @@ export const MOCK_COURSES: Course[] = [
         resumeScore: 0,
         tugasScore: 0,
         keaktifanScore: 0,
+        tugasQuestion: 'Coba Anda analisis mengapa nilai Pi (π) selalu konstan 3.14 atau 22/7 pada lingkaran berapapun ukurannya? Hubungkan analisis Anda dengan rasio keliling dan diameter. Apa dampaknya jika nilai Pi berubah?',
         availableAt: '2023-10-15T00:00:00Z',
         kbs: [
           {

@@ -6,7 +6,7 @@ import { MOCK_SUMMATIVE_QUESTIONS } from '../services/seedData';
 
 interface SummativeTestProps {
   courses: Course[];
-  onCompleteSummative: (courseId: string, moduleId: string, score: number, isRemedial: boolean) => void;
+  onCompleteSummative: (courseId: string, moduleId: string, score: number, isRemedial: boolean) => Promise<void> | void;
   onStartRemedial: (courseId: string, moduleId: string) => void;
 }
 
@@ -157,10 +157,17 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     // Logic: If the module was already flagged as remedial (via startRemedial), this attempt is remedial.
     const isRemedialAttempt = !!module.isRemedial; 
 
-    setTimeout(() => {
+    // Gunakan setTimeout hanya untuk efek delay visual
+    setTimeout(async () => {
         if (courseId && moduleId) {
-            onCompleteSummative(courseId, moduleId, finalScore, isRemedialAttempt);
-            setIsSubmitting(false);
+            await onCompleteSummative(courseId, moduleId, finalScore, isRemedialAttempt);
+            
+            // PENTING: Jangan set setIsSubmitting(false) di sini.
+            // Biarkan loading spinner tetap berputar sampai parent component (App)
+            // memperbarui data 'courses'. 
+            // Setelah data terupdate, 'module.summativeSubmitted' akan menjadi true
+            // dan React akan otomatis me-render VIEW RESULT SCREEN di atas,
+            // sehingga VIEW QUESTION INTERFACE (yang memuat spinner) akan hilang.
         }
     }, 1500);
   };

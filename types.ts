@@ -41,9 +41,11 @@ export interface Module {
   order: number;
   diagnosticSubmitted: boolean;
   
-  // Tugas Terstruktur Fields
+  // Tugas Terstruktur Fields (Updated for HOTS Text)
   tugasSubmitted?: boolean;
-  tugasFile?: string; // Mock URL or filename
+  tugasFile?: string; // Deprecated but kept for type safety
+  tugasContent?: string; // New: Student's critical analysis text
+  tugasQuestion?: string; // New: The HOTS question prompt
   
   summativeSubmitted?: boolean; 
   summativeScore?: number;

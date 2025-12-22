@@ -59,6 +59,7 @@ const mergeCourseProgress = (seedCourses: Course[], savedCourses: Course[]): Cou
           diagnosticSubmitted: savedMod.diagnosticSubmitted,
           tugasSubmitted: savedMod.tugasSubmitted,
           tugasFile: savedMod.tugasFile,
+          tugasContent: savedMod.tugasContent, // Restore text content
           summativeSubmitted: savedMod.summativeSubmitted,
           summativeScore: savedMod.summativeScore,
           isRemedial: savedMod.isRemedial,
@@ -238,19 +239,38 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
     if (course.id === courseId) {
       return {
         ...course,
-        modules: course.modules.map(module => ({
-          ...module,
-          kbs: module.kbs.map(kb => {
-            if (kb.id === kbId) {
-              return { 
-                ...kb, 
-                isCompleted: true,
-                resumeContent: resumeContent || kb.resumeContent // Save content
+        modules: course.modules.map(module => {
+           // Cek apakah KB ini ada di dalam modul ini
+           const targetKbIndex = module.kbs.findIndex(k => k.id === kbId);
+           
+           if (targetKbIndex !== -1) {
+               // Update status KB
+               const updatedKBs = module.kbs.map(kb => {
+                if (kb.id === kbId) {
+                  return { 
+                    ...kb, 
+                    isCompleted: true,
+                    resumeContent: resumeContent || kb.resumeContent 
+                  };
+                }
+                return kb;
+              });
+
+              // --- AUTO-GRADING LOGIC (DEMO ONLY) ---
+              // Karena belum ada Guru, sistem memberi nilai otomatis agar progress bar berjalan.
+              // Nilai Resume: 92, Nilai Keaktifan: 90
+              // Jika sudah ada nilai sebelumnya, gunakan nilai tersebut (jangan override jadi 92 lagi).
+              
+              return {
+                  ...module,
+                  kbs: updatedKBs,
+                  resumeScore: module.resumeScore || 92,
+                  keaktifanScore: module.keaktifanScore || 90
               };
-            }
-            return kb;
-          }),
-        })),
+           }
+           
+           return module;
+        }),
       };
     }
     return course;
@@ -313,7 +333,7 @@ export const updateDiagnosticCompletion = async (courseId: string, moduleId: str
     return updatedCourses;
 };
 
-export const updateTugasSubmission = async (courseId: string, moduleId: string, fileName: string): Promise<Course[]> => {
+export const updateTugasSubmission = async (courseId: string, moduleId: string, content: string): Promise<Course[]> => {
   const courses = await getCourses();
   const updatedCourses = courses.map(course => {
       if (course.id === courseId) {
@@ -324,7 +344,11 @@ export const updateTugasSubmission = async (courseId: string, moduleId: string, 
                       return { 
                         ...module, 
                         tugasSubmitted: true,
-                        tugasFile: fileName
+                        tugasContent: content, // Save the text content
+                        tugasFile: 'analysis-hots.txt', // Dummy file name for legacy compatibility
+                        // --- AUTO-GRADING LOGIC (DEMO ONLY) ---
+                        // Beri nilai tugas 95 saat dikumpulkan
+                        tugasScore: 95
                       };
                   }
                   return module;

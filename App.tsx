@@ -70,8 +70,8 @@ const App: React.FC = () => {
      setCourses(updatedCourses);
   };
 
-  const handleAssignmentSubmit = async (courseId: string, moduleId: string, fileName: string) => {
-    const updatedCourses = await api.updateTugasSubmission(courseId, moduleId, fileName);
+  const handleAssignmentSubmit = async (courseId: string, moduleId: string, content: string) => {
+    const updatedCourses = await api.updateTugasSubmission(courseId, moduleId, content);
     setCourses(updatedCourses);
   };
 
