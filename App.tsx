@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -11,71 +11,69 @@ import ComingSoon from './pages/ComingSoon';
 import SummativeTest from './pages/SummativeTest';
 import DiagnosticTest from './pages/DiagnosticTest';
 import CoursesPage from './pages/CoursesPage';
-import { MOCK_USER, MOCK_COURSES } from './constants';
+import * as api from './services/api';
 import { User, Course } from './types';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User>(MOCK_USER);
-  const [courses, setCourses] = useState<Course[]>(MOCK_COURSES);
+  const [user, setUser] = useState<User | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Profile Lock Logic: If profile isn't complete, force redirection to ProfileGate
-  const isProfileLocked = !user.profileComplete;
+  useEffect(() => {
+    const loadData = async () => {
+      api.initializeData(); // Seed data if it doesn't exist
+      const [userData, coursesData] = await Promise.all([
+        api.getUser(),
+        api.getCourses(),
+      ]);
+      setUser(userData);
+      setCourses(coursesData);
+      setIsLoading(false);
+    };
+    loadData();
+  }, []);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const handleCompleteKB = (courseId: string, kbId: string) => {
-    setCourses(prevCourses =>
-      prevCourses.map(course => {
-        if (course.id === courseId) {
-          return {
-            ...course,
-            modules: course.modules.map(module => ({
-              ...module,
-              kbs: module.kbs.map(kb => {
-                if (kb.id === kbId) {
-                  return { ...kb, isCompleted: true };
-                }
-                return kb;
-              }),
-            })),
-          };
-        }
-        return course;
-      })
-    );
+  const handleCompleteKB = async (courseId: string, kbId: string) => {
+    const updatedCourses = await api.updateKBCompletion(courseId, kbId);
+    setCourses(updatedCourses);
   };
 
-  const handleDiagnosticComplete = (courseId: string, moduleId: string) => {
-    setCourses(prevCourses =>
-      prevCourses.map(course => {
-        if (course.id === courseId) {
-          return {
-            ...course,
-            modules: course.modules.map(module => {
-              if (module.id === moduleId) {
-                return { ...module, diagnosticSubmitted: true };
-              }
-              return module;
-            }),
-          };
-        }
-        return course;
-      })
-    );
+  const handleDiagnosticComplete = async (courseId: string, moduleId: string) => {
+    const updatedCourses = await api.updateDiagnosticCompletion(courseId, moduleId);
+    setCourses(updatedCourses);
   };
+
+  const handleProfileUpdate = async (updatedUser: User) => {
+      const savedUser = await api.updateUser(updatedUser);
+      setUser(savedUser);
+  };
+  
+  if (isLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center">
+            <i className="fa-solid fa-spinner fa-spin text-4xl text-emerald-600"></i>
+            <p className="mt-4 font-semibold text-slate-700">Memuat Data Pembelajaran...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Profile Lock Logic
+  const isProfileLocked = !user.profileComplete;
 
   return (
     <HashRouter>
       <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
-        {/* Sidebar with mobile state */}
         <Sidebar 
           role={user.role} 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
         />
         
-        {/* Mobile Backdrop */}
         {isSidebarOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
@@ -90,7 +88,7 @@ const App: React.FC = () => {
             <Routes>
               {isProfileLocked ? (
                 <>
-                  <Route path="/profile" element={<ProfileGate user={user} onComplete={() => setUser({...user, profileComplete: true})} />} />
+                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />
                   <Route path="*" element={<Navigate to="/profile" replace />} />
                 </>
               ) : (
@@ -104,7 +102,7 @@ const App: React.FC = () => {
                   <Route path="/grades" element={<ComingSoon title="Nilai & Statistik" icon="fa-chart-line" />} />
                   <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
                   <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />
-                  <Route path="/profile" element={<ProfileGate user={user} onComplete={() => {}} />} />
+                  <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </>
               )}

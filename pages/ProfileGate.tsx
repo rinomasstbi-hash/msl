@@ -5,14 +5,13 @@ import { User } from '../types';
 
 interface ProfileGateProps {
   user: User;
-  onComplete: () => void;
+  onProfileUpdate: (user: User) => void;
 }
 
-const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
+const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   
-  // Pre-populate form for editing, or start empty for initial completion
   const initialFormData = user.profileComplete ? {
     nisn: '0071234567',
     address: 'Jombang, Jawa Timur',
@@ -36,13 +35,15 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
     if (isFormValid) {
       if (!user.profileComplete) {
         // First time completion
-        onComplete();
+        const updatedUser = { ...user, profileComplete: true, ...formData };
+        onProfileUpdate(updatedUser);
         navigate('/');
       } else {
         // Editing existing profile
+        const updatedUser = { ...user, ...formData };
+        onProfileUpdate(updatedUser);
         alert("Profil berhasil diperbarui!");
         setIsEditing(false);
-        // In a real app, you would dispatch an update action here
       }
     }
   };
@@ -52,7 +53,6 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
     setIsEditing(false);
   };
 
-  // If profile is complete AND we are not in editing mode, show the profile view page
   if (user.profileComplete && !isEditing) {
     return (
       <div className="max-w-2xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">

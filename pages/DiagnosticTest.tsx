@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Course } from '../types';
-import { MOCK_DIAGNOSTIC_QUESTIONS } from '../constants';
+// FIX: MOCK_DIAGNOSTIC_QUESTIONS has been moved to services/seedData.ts, updating the import path.
+import { MOCK_DIAGNOSTIC_QUESTIONS } from '../services/seedData';
 
 interface DiagnosticTestProps {
   courses: Course[];
