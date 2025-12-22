@@ -75,6 +75,29 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
           ></textarea>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Nama Orang Tua/Wali</label>
+                <input 
+                    type="text"
+                    value={formData.parentName}
+                    onChange={(e) => setFormData({...formData, parentName: e.target.value})}
+                    placeholder="Contoh: Budi Santoso" 
+                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
+                />
+            </div>
+            <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Nomor HP Orang Tua/Wali</label>
+                <input 
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="Contoh: 081234567890" 
+                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
+                />
+            </div>
+        </div>
+
         <div className="bg-slate-50 p-4 rounded-xl space-y-4">
            <h4 className="font-bold text-slate-800 flex items-center">
              <i className="fa-solid fa-file-signature mr-2 text-emerald-600"></i>
