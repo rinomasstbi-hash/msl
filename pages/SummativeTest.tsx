@@ -27,23 +27,29 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     return <div>Ujian tidak ditemukan.</div>;
   }
 
-  // Handle Remedial Start
+  // --- REMEDIAL LOGIC CONFIG ---
+  const MAX_REMEDIAL_ATTEMPTS = 2;
+  const currentRemedialCount = module.remedialAttemptCount || 0;
+
   const handleStartRemedial = () => {
       if (courseId && moduleId) {
+          if (currentRemedialCount >= MAX_REMEDIAL_ATTEMPTS) {
+              return; // Guard clause
+          }
+          setIsSubmitting(false); 
           onStartRemedial(courseId, moduleId);
-          // Local state reset handled by reloading or logic below, 
-          // but since onStartRemedial updates parent state which causes re-render of this component
-          // check if module.summativeSubmitted becomes false.
-          // However, for immediate feedback:
+          // Reset local state for immediate feedback
           setTestStarted(true);
           setAnswers(Array(MOCK_SUMMATIVE_QUESTIONS.length).fill(-1));
           setCurrentQuestionIndex(0);
       }
   }
 
-  // If already submitted and NOT in remedial flow (summativeSubmitted is true)
+  // VIEW: RESULT SCREEN (Jika sudah submit)
   if (module.summativeSubmitted) {
      const isBelowKKTP = module.summativeScore < KKTP;
+     // Cek apakah masih punya sisa kesempatan (count < 2)
+     const canRetake = currentRemedialCount < MAX_REMEDIAL_ATTEMPTS;
 
      return (
         <div className="max-w-3xl mx-auto text-center py-10 animate-in fade-in duration-500">
@@ -63,14 +69,42 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
              {isBelowKKTP ? (
                  <div className="space-y-4">
-                     <p className="text-red-700 font-medium">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).<br/>Silakan ikuti remedial untuk memperbaiki nilai.</p>
-                     <p className="text-xs text-slate-500">Catatan: Nilai Remedial maksimal {KKTP}.</p>
-                     <button 
-                        onClick={handleStartRemedial}
-                        className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
-                     >
-                        Ikuti Remedial Sekarang
-                     </button>
+                     {/* Info Percobaan Remedial */}
+                     {currentRemedialCount > 0 && (
+                        <div className="inline-block px-4 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold mb-2">
+                            Remedial ke-{currentRemedialCount} dari {MAX_REMEDIAL_ATTEMPTS}
+                        </div>
+                     )}
+
+                     {canRetake ? (
+                         <div className="animate-in slide-in-from-bottom-2">
+                             <p className="text-red-700 font-medium mb-1">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).</p>
+                             <p className="text-xs text-slate-500 mb-4">Catatan: Nilai Remedial maksimal {KKTP}. Sistem akan mengambil nilai terbaik.</p>
+                             <button 
+                                onClick={handleStartRemedial}
+                                className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                             >
+                                Ikuti Remedial Sekarang
+                             </button>
+                         </div>
+                     ) : (
+                         <div className="bg-white/60 p-6 rounded-xl border border-red-100 animate-in zoom-in-95">
+                            <div className="w-12 h-12 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i className="fa-solid fa-ban text-xl"></i>
+                            </div>
+                            <h3 className="text-slate-800 font-bold mb-2">Kesempatan Remedial Habis</h3>
+                            <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
+                                Anda telah menggunakan seluruh kesempatan remedial ({MAX_REMEDIAL_ATTEMPTS}x). 
+                                Sistem telah menyimpan <strong>nilai tertinggi</strong> dari seluruh percobaan Anda sebagai nilai akhir.
+                            </p>
+                            <Link 
+                                to={`/course/${courseId}`}
+                                className="inline-block bg-slate-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all"
+                            >
+                                Kembali ke UKBM
+                            </Link>
+                         </div>
+                     )}
                  </div>
              ) : (
                 <Link 
@@ -120,15 +154,14 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     });
     
     const finalScore = Math.round((correctCount / MOCK_SUMMATIVE_QUESTIONS.length) * 100);
-    const isRemedialAttempt = !!module.isRemedial; // Check existing flag, or assume remedial if re-taking
+    // Logic: If the module was already flagged as remedial (via startRemedial), this attempt is remedial.
+    const isRemedialAttempt = !!module.isRemedial; 
 
-    // Simulate processing delay
     setTimeout(() => {
         if (courseId && moduleId) {
             onCompleteSummative(courseId, moduleId, finalScore, isRemedialAttempt);
+            setIsSubmitting(false);
         }
-        // Don't navigate away immediately, let the component re-render to show the result card (Remedial or Pass)
-        // navigate(`/course/${courseId}`);
     }, 1500);
   };
 
@@ -136,6 +169,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   const progress = ((currentQuestionIndex + 1) / MOCK_SUMMATIVE_QUESTIONS.length) * 100;
   const isAllAnswered = !answers.includes(-1);
 
+  // VIEW: START SCREEN
   if (!testStarted) {
     return (
       <div className="max-w-3xl mx-auto text-center py-10 animate-in fade-in duration-500">
@@ -157,7 +191,12 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
               <li>Waktu pengerjaan ujian estimasi <strong>15 Menit</strong>.</li>
               <li>Ujian terdiri dari {MOCK_SUMMATIVE_QUESTIONS.length} Soal Pilihan Ganda.</li>
               <li>Minimal nilai ketuntasan (KKTP) adalah <strong>{KKTP}</strong>.</li>
-              {module.isRemedial && <li className="font-bold">Nilai maksimal Remedial adalah {KKTP}.</li>}
+              {module.isRemedial && (
+                  <>
+                    <li className="font-bold">Nilai maksimal Remedial adalah {KKTP}.</li>
+                    <li>Kesempatan Remedial maksimal <strong>2 kali</strong>.</li>
+                  </>
+              )}
               <li>Dilarang membuka tab baru atau window lain selama ujian berlangsung.</li>
             </ul>
           </div>
@@ -167,7 +206,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
               onClick={() => setTestStarted(true)}
               className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 transition-all"
             >
-              {module.isRemedial ? 'Mulai Remedial' : 'Mulai Ujian Sekarang'}
+              {module.isRemedial ? 'Mulai Mengerjakan' : 'Mulai Ujian Sekarang'}
             </button>
             <Link 
               to={`/course/${courseId}`}
@@ -181,7 +220,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     );
   }
 
-  // Test Interface
+  // VIEW: QUESTION INTERFACE
   return (
      <div className="max-w-3xl mx-auto animate-in fade-in duration-500 py-6">
       <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 relative overflow-hidden">

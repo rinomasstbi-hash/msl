@@ -62,6 +62,7 @@ const mergeCourseProgress = (seedCourses: Course[], savedCourses: Course[]): Cou
           summativeSubmitted: savedMod.summativeSubmitted,
           summativeScore: savedMod.summativeScore,
           isRemedial: savedMod.isRemedial,
+          remedialAttemptCount: savedMod.remedialAttemptCount ?? 0,
           
           // Restore scores
           resumeScore: savedMod.resumeScore ?? seedMod.resumeScore,
@@ -348,8 +349,17 @@ export const updateSummativeScore = async (courseId: string, moduleId: string, s
                   if (module.id === moduleId) {
                       // REMEDIAL LOGIC: Cap Score at KKTP (84) if it's a remedial attempt
                       let finalScore = score;
-                      if (isRemedialAttempt && score > KKTP) {
-                          finalScore = KKTP;
+                      if (isRemedialAttempt) {
+                          if (finalScore > KKTP) {
+                              finalScore = KKTP;
+                          }
+                          // RULE: Take the larger of the two remedials
+                          // If there was a previous score (which was presumably a remedial score or initial),
+                          // we compare. 
+                          // NOTE: isRemedial is true means we are submitting a remedial result.
+                          // previous 'summativeScore' holds the best score so far.
+                          const previousScore = module.summativeScore || 0;
+                          finalScore = Math.max(finalScore, previousScore);
                       }
 
                       return { 
@@ -357,6 +367,7 @@ export const updateSummativeScore = async (courseId: string, moduleId: string, s
                         summativeSubmitted: true,
                         summativeScore: finalScore,
                         isRemedial: isRemedialAttempt
+                        // Note: remedialAttemptCount is NOT updated here, it was updated at startRemedial
                       };
                   }
                   return module;
@@ -382,9 +393,9 @@ export const resetSummativeForRemedial = async (courseId: string, moduleId: stri
                       return { 
                         ...module, 
                         summativeSubmitted: false, // Reset status to allow retake
-                        // Keep previous score or clear it, we'll overwrite it anyway.
-                        // Important: Mark as Remedial so next score is capped
-                        isRemedial: true 
+                        isRemedial: true,
+                        // Increment Attempt Count
+                        remedialAttemptCount: (module.remedialAttemptCount || 0) + 1
                       };
                   }
                   return module;

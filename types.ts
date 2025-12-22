@@ -48,6 +48,7 @@ export interface Module {
   summativeSubmitted?: boolean; 
   summativeScore?: number;
   isRemedial?: boolean; // New: Flag if the current score is from a remedial attempt
+  remedialAttemptCount?: number; // New: Track number of remedial attempts
   
   // Weighted scores fields
   resumeScore?: number;
