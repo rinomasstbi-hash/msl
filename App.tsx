@@ -8,17 +8,41 @@ import CourseDetail from './pages/CourseDetail';
 import KBView from './pages/KBView';
 import ProfileGate from './pages/ProfileGate';
 import ComingSoon from './pages/ComingSoon';
-import { MOCK_USER } from './constants';
-import { User } from './types';
+import SummativeTest from './pages/SummativeTest';
+import { MOCK_USER, MOCK_COURSES } from './constants';
+import { User, Course } from './types';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User>(MOCK_USER);
+  const [courses, setCourses] = useState<Course[]>(MOCK_COURSES);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Profile Lock Logic: If profile isn't complete, force redirection to ProfileGate
   const isProfileLocked = !user.profileComplete;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  const handleCompleteKB = (courseId: string, kbId: string) => {
+    setCourses(prevCourses =>
+      prevCourses.map(course => {
+        if (course.id === courseId) {
+          return {
+            ...course,
+            modules: course.modules.map(module => ({
+              ...module,
+              kbs: module.kbs.map(kb => {
+                if (kb.id === kbId) {
+                  return { ...kb, isCompleted: true };
+                }
+                return kb;
+              }),
+            })),
+          };
+        }
+        return course;
+      })
+    );
+  };
 
   return (
     <HashRouter>
@@ -50,10 +74,11 @@ const App: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Route path="/" element={<Dashboard user={user} />} />
-                  <Route path="/courses" element={<Dashboard user={user} />} />
-                  <Route path="/course/:id" element={<CourseDetail />} />
-                  <Route path="/kb/:courseId/:kbId" element={<KBView />} />
+                  <Route path="/" element={<Dashboard user={user} courses={courses} />} />
+                  <Route path="/courses" element={<Dashboard user={user} courses={courses} />} />
+                  <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
+                  <Route path="/kb/:courseId/:kbId" element={<KBView courses={courses} onCompleteKB={handleCompleteKB} />} />
+                  <Route path="/test/sumatif/:courseId/:moduleId" element={<SummativeTest courses={courses} />} />
                   <Route path="/grades" element={<ComingSoon title="Nilai & Statistik" icon="fa-chart-line" />} />
                   <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
                   <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />

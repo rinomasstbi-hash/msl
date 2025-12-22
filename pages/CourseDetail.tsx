@@ -1,11 +1,15 @@
 
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MOCK_COURSES } from '../constants';
+import { Course } from '../types';
 
-const CourseDetail: React.FC = () => {
+interface CourseDetailProps {
+  courses: Course[];
+}
+
+const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
   const { id } = useParams<{ id: string }>();
-  const course = MOCK_COURSES.find(c => c.id === id);
+  const course = courses.find(c => c.id === id);
 
   if (!course) return <div>Course not found</div>;
 
@@ -74,12 +78,12 @@ const CourseDetail: React.FC = () => {
                   const isLocked = !mod.diagnosticSubmitted || (kbIdx > 0 && !mod.kbs[kbIdx - 1].isCompleted);
                   
                   return (
-                    <div key={kb.id} className={`relative flex items-center p-6 pl-20 ${isLocked ? 'opacity-50 grayscale pointer-events-none' : 'hover:bg-slate-50 transition-colors cursor-pointer group'}`}>
+                    <div key={kb.id} className={`relative flex items-center p-6 pl-20 ${isLocked ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                       {/* Node Indicator */}
-                      <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${kb.isCompleted ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                      <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${kb.isCompleted ? 'bg-emerald-500' : isLocked ? 'bg-slate-300' : 'bg-amber-400'}`}></div>
                       
                       <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
+                        <div className={`${isLocked ? '' : 'group'}`}>
                           <p className="text-[10px] font-bold text-emerald-600 uppercase mb-0.5">KB {kbIdx + 1}</p>
                           <h4 className="font-bold text-slate-800">{kb.title}</h4>
                           <p className="text-xs text-slate-500 mt-1">
@@ -95,10 +99,14 @@ const CourseDetail: React.FC = () => {
                           ) : (
                             <Link 
                               to={`/kb/${course.id}/${kb.id}`} 
-                              className="bg-emerald-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-emerald-700 transition-all flex items-center space-x-2"
+                              className={`px-5 py-2 rounded-xl text-sm font-bold shadow-md transition-all flex items-center space-x-2 ${
+                                kb.isCompleted 
+                                  ? 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50' 
+                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                              }`}
                             >
-                              <span>Buka Materi</span>
-                              <i className="fa-solid fa-arrow-right-long"></i>
+                              <span>{kb.isCompleted ? 'Ulas Materi' : 'Buka Materi'}</span>
+                              <i className={`fa-solid ${kb.isCompleted ? 'fa-eye' : 'fa-arrow-right-long'}`}></i>
                             </Link>
                           )}
                         </div>
@@ -108,16 +116,19 @@ const CourseDetail: React.FC = () => {
                 })}
                 
                 {/* Sumatif Node */}
-                <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${!mod.kbs.every(k => k.isCompleted) ? 'opacity-50 grayscale pointer-events-none' : 'hover:bg-indigo-50 transition-colors cursor-pointer group'}`}>
+                <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${!mod.kbs.every(k => k.isCompleted) ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
                   <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${mod.kbs.every(k => k.isCompleted) ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}></div>
                   <div className="flex-1 flex justify-between items-center">
                     <div>
                       <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5">Evaluation</p>
                       <h4 className="font-bold text-slate-800">Tes Sumatif Modul</h4>
                     </div>
-                    <button className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all">
+                    <Link 
+                      to={`/test/sumatif/${course.id}/${mod.id}`}
+                      className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all"
+                    >
                        Mulai Ujian
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

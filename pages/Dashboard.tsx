@@ -1,14 +1,14 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, UserRole } from '../types';
-import { MOCK_COURSES } from '../constants';
+import { User, Course } from '../types';
 
 interface DashboardProps {
   user: User;
+  courses: Course[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -47,7 +47,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-          {MOCK_COURSES.map(course => (
+          {courses.map(course => (
             <Link 
               key={course.id} 
               to={`/course/${course.id}`}

@@ -22,7 +22,7 @@ export const MOCK_COURSES: Course[] = [
         title: 'Teorema Pythagoras',
         subject: 'Matematika',
         order: 1,
-        diagnosticSubmitted: true, // Diagnostic is now submitted
+        diagnosticSubmitted: true, // Diagnostic is submitted to unlock first KB
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
@@ -31,7 +31,7 @@ export const MOCK_COURSES: Course[] = [
             order: 1,
             content: 'Pythagoras adalah matematikawan Yunani...',
             estimatedTime: 120,
-            isCompleted: true // KB is now completed
+            isCompleted: false // Reset to false for testing completion logic
           },
           {
             id: 'kb-1-2',
@@ -39,7 +39,7 @@ export const MOCK_COURSES: Course[] = [
             order: 2,
             content: 'Rumus c^2 = a^2 + b^2 digunakan untuk...',
             estimatedTime: 180,
-            isCompleted: true // KB is now completed
+            isCompleted: false // Reset to false for testing completion logic
           }
         ]
       }

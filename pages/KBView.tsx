@@ -1,11 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MOCK_COURSES } from '../constants';
+import { Course } from '../types';
 
 const KB_MIN_TIME = 10; // set to 10 seconds for testing demo, real world would be e.g. 120 (2 mins)
 
-const KBView: React.FC = () => {
+interface KBViewProps {
+  courses: Course[];
+  onCompleteKB: (courseId: string, kbId: string) => void;
+}
+
+const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
   const { courseId, kbId } = useParams<{ courseId: string; kbId: string }>();
   const navigate = useNavigate();
   
@@ -15,18 +20,26 @@ const KBView: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'resume' | 'discussion'>('content');
   
-  const course = MOCK_COURSES.find(c => c.id === courseId);
+  const course = courses.find(c => c.id === courseId);
   const kb = course?.modules.flatMap(m => m.kbs).find(k => k.id === kbId);
 
   // Time-on-task tracker
   useEffect(() => {
+    // Do not start timer if KB is already completed
+    if (kb?.isCompleted) return;
+
     const timer = setInterval(() => {
       setSecondsSpent(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [kb?.isCompleted]);
 
   const handleFinish = () => {
+    if (kb?.isCompleted) {
+       navigate(`/course/${courseId}`);
+       return;
+    }
+
     if (secondsSpent < KB_MIN_TIME) {
       setShowWarning(true);
       setTimeout(() => setShowWarning(false), 3000);
@@ -43,6 +56,9 @@ const KBView: React.FC = () => {
     // Simulate API call and similarity check
     setTimeout(() => {
       alert("Materi Selesai! Resume Anda telah tersimpan dan divalidasi (Similarity: 12%).");
+      if (courseId && kbId) {
+        onCompleteKB(courseId, kbId);
+      }
       navigate(`/course/${courseId}`);
     }, 1500);
   };
@@ -101,8 +117,9 @@ const KBView: React.FC = () => {
                 </div>
 
                 <textarea
+                  readOnly={kb.isCompleted}
                   className="w-full h-80 p-6 rounded-2xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 transition-all outline-none resize-none font-medium text-slate-700 leading-relaxed"
-                  placeholder="Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."
+                  placeholder={kb.isCompleted ? "Anda sudah menyelesaikan resume untuk materi ini." : "Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."}
                   value={resumeContent}
                   onChange={(e) => setResumeContent(e.target.value)}
                   onPaste={handlePaste}
@@ -129,59 +146,72 @@ const KBView: React.FC = () => {
       </div>
 
       {/* Right Column: Status Card */}
-      <div className="lg:w-80 space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm sticky top-24">
-          <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 border-b border-slate-100 pb-4">Status Belajar</h4>
-          
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">Durasi Sesi</span>
-              <span className={`text-sm font-black ${secondsSpent < KB_MIN_TIME ? 'text-amber-500' : 'text-emerald-600'}`}>
-                {Math.floor(secondsSpent / 60)}m {secondsSpent % 60}s
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
-                <span>Threshold Kelulusan KB</span>
-                <span>{Math.min(100, Math.round((secondsSpent / KB_MIN_TIME) * 100))}%</span>
+      <div className="lg:w-80">
+        <div className="sticky top-24 space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 border-b border-slate-100 pb-4">Status Belajar</h4>
+            
+            {kb.isCompleted ? (
+              <div className='text-center py-4'>
+                <div className='w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full mx-auto flex items-center justify-center mb-4'>
+                   <i className='fa-solid fa-check-double text-3xl'></i>
+                </div>
+                <h5 className='font-bold text-slate-800'>Materi Selesai</h5>
+                <p className='text-xs text-slate-500 mt-1'>Anda bisa melanjutkan ke materi berikutnya.</p>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-500 rounded-full ${secondsSpent < KB_MIN_TIME ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                  style={{ width: `${Math.min(100, (secondsSpent / KB_MIN_TIME) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
+            ) : (
+               <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500">Durasi Sesi</span>
+                  <span className={`text-sm font-black ${secondsSpent < KB_MIN_TIME ? 'text-amber-500' : 'text-emerald-600'}`}>
+                    {Math.floor(secondsSpent / 60)}m {secondsSpent % 60}s
+                  </span>
+                </div>
 
-            <button
-              onClick={handleFinish}
-              disabled={isSubmitting}
-              className={`w-full py-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg ${
-                isSubmitting ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-800 text-white hover:bg-emerald-900 active:scale-95'
-              }`}
-            >
-              {isSubmitting ? (
-                <i className="fa-solid fa-circle-notch animate-spin"></i>
-              ) : (
-                <>
-                  <span>Selesaikan KB Ini</span>
-                  <i className="fa-solid fa-check-circle"></i>
-                </>
-              )}
-            </button>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                    <span>Threshold Kelulusan KB</span>
+                    <span>{Math.min(100, Math.round((secondsSpent / KB_MIN_TIME) * 100))}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 rounded-full ${secondsSpent < KB_MIN_TIME ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                      style={{ width: `${Math.min(100, (secondsSpent / KB_MIN_TIME) * 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
 
-            {showWarning && (
-              <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs font-bold text-center border border-red-100 animate-bounce">
-                <i className="fa-solid fa-stopwatch mr-1"></i> Anda membaca terlalu cepat! Pahami materi dengan seksama.
+                <button
+                  onClick={handleFinish}
+                  disabled={isSubmitting}
+                  className={`w-full py-4 rounded-xl font-bold flex items-center justify-center space-x-2 transition-all shadow-lg ${
+                    isSubmitting ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-emerald-800 text-white hover:bg-emerald-900 active:scale-95'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <i className="fa-solid fa-circle-notch animate-spin"></i>
+                  ) : (
+                    <>
+                      <span>Selesaikan KB Ini</span>
+                      <i className="fa-solid fa-check-circle"></i>
+                    </>
+                  )}
+                </button>
+
+                {showWarning && (
+                  <div className="bg-red-50 text-red-700 p-3 rounded-lg text-xs font-bold text-center border border-red-100 animate-bounce">
+                    <i className="fa-solid fa-stopwatch mr-1"></i> Anda membaca terlalu cepat! Pahami materi dengan seksama.
+                  </div>
+                )}
               </div>
             )}
+           
           </div>
-        </div>
 
-        <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-           <p className="text-[10px] font-black text-emerald-700 uppercase mb-2">Deep Learning Hint</p>
-           <p className="text-xs text-emerald-800 leading-relaxed italic">"Ilmu itu ibarat hewan buruan, dan tulisan (resume) adalah pengikatnya."</p>
+          <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+             <p className="text-[10px] font-black text-emerald-700 uppercase mb-2">Deep Learning Hint</p>
+             <p className="text-xs text-emerald-800 leading-relaxed italic">"Ilmu itu ibarat hewan buruan, dan tulisan (resume) adalah pengikatnya."</p>
+          </div>
         </div>
       </div>
     </div>
