@@ -1,16 +1,16 @@
 
-import { User, Course } from '../types';
+import { User, Course, KKTP } from '../types';
 import { MOCK_USER, MOCK_COURSES } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxSglpuF-I-fi4Nt9vZyLFYDVARM4B_mVHb6A3DWU2-8Faz9j7XZ_FM46OsHht2JBE/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwYD1ZUFbbWMEUCccr_bYwXlz5U8rNxk8nQ2ww8sTbJwbMEx_cpVXxvDYMQSVaGZGA/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 // Increment this version whenever you add new Seed Data (like UKBM 2) to force client update
-const CURRENT_DATA_VERSION = '1.3'; 
+const CURRENT_DATA_VERSION = '1.4'; 
 
 // --- Helper functions to interact with localStorage (Fallback) ---
 const getLocalData = <T>(key: string): T | null => {
@@ -57,15 +57,25 @@ const mergeCourseProgress = (seedCourses: Course[], savedCourses: Course[]): Cou
           ...seedMod, // Keep structure (title, content questions) from SEED
           // Restore Progress from SAVED
           diagnosticSubmitted: savedMod.diagnosticSubmitted,
+          tugasSubmitted: savedMod.tugasSubmitted,
+          tugasFile: savedMod.tugasFile,
           summativeSubmitted: savedMod.summativeSubmitted,
           summativeScore: savedMod.summativeScore,
+          isRemedial: savedMod.isRemedial,
+          
+          // Restore scores
+          resumeScore: savedMod.resumeScore ?? seedMod.resumeScore,
+          tugasScore: savedMod.tugasScore ?? seedMod.tugasScore,
+          keaktifanScore: savedMod.keaktifanScore ?? seedMod.keaktifanScore,
+
           kbs: seedMod.kbs.map(seedKb => {
             const savedKb = savedMod.kbs.find(k => k.id === seedKb.id);
             if (!savedKb) return seedKb;
             
             return {
               ...seedKb, // Keep structure (content, timer) from SEED
-              isCompleted: savedKb.isCompleted // Restore completion status
+              isCompleted: savedKb.isCompleted, // Restore completion status
+              resumeContent: savedKb.resumeContent // Restore resume text
             };
           })
         };
@@ -220,8 +230,8 @@ const syncToCloud = async (courses: Course[]) => {
 };
 
 
-export const updateKBCompletion = async (courseId: string, kbId: string): Promise<Course[]> => {
-  const courses = await getCourses(); // Use getCourses to ensure we have merged data
+export const updateKBCompletion = async (courseId: string, kbId: string, resumeContent?: string): Promise<Course[]> => {
+  const courses = await getCourses();
   
   const updatedCourses = courses.map(course => {
     if (course.id === courseId) {
@@ -231,7 +241,11 @@ export const updateKBCompletion = async (courseId: string, kbId: string): Promis
           ...module,
           kbs: module.kbs.map(kb => {
             if (kb.id === kbId) {
-              return { ...kb, isCompleted: true };
+              return { 
+                ...kb, 
+                isCompleted: true,
+                resumeContent: resumeContent || kb.resumeContent // Save content
+              };
             }
             return kb;
           }),
@@ -257,7 +271,11 @@ export const resetKBCompletion = async (courseId: string, kbId: string): Promise
           ...module,
           kbs: module.kbs.map(kb => {
             if (kb.id === kbId) {
-              return { ...kb, isCompleted: false }; // Set to FALSE
+              return { 
+                ...kb, 
+                isCompleted: false,
+                resumeContent: '' // Clear resume on reset
+              }; 
             }
             return kb;
           }),
@@ -294,7 +312,7 @@ export const updateDiagnosticCompletion = async (courseId: string, moduleId: str
     return updatedCourses;
 };
 
-export const updateSummativeScore = async (courseId: string, moduleId: string, score: number): Promise<Course[]> => {
+export const updateTugasSubmission = async (courseId: string, moduleId: string, fileName: string): Promise<Course[]> => {
   const courses = await getCourses();
   const updatedCourses = courses.map(course => {
       if (course.id === courseId) {
@@ -304,8 +322,69 @@ export const updateSummativeScore = async (courseId: string, moduleId: string, s
                   if (module.id === moduleId) {
                       return { 
                         ...module, 
+                        tugasSubmitted: true,
+                        tugasFile: fileName
+                      };
+                  }
+                  return module;
+              }),
+          };
+      }
+      return course;
+  });
+
+  setLocalData(COURSES_KEY, updatedCourses);
+  syncToCloud(updatedCourses);
+  return updatedCourses;
+};
+
+export const updateSummativeScore = async (courseId: string, moduleId: string, score: number, isRemedialAttempt: boolean = false): Promise<Course[]> => {
+  const courses = await getCourses();
+  const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+          return {
+              ...course,
+              modules: course.modules.map(module => {
+                  if (module.id === moduleId) {
+                      // REMEDIAL LOGIC: Cap Score at KKTP (84) if it's a remedial attempt
+                      let finalScore = score;
+                      if (isRemedialAttempt && score > KKTP) {
+                          finalScore = KKTP;
+                      }
+
+                      return { 
+                        ...module, 
                         summativeSubmitted: true,
-                        summativeScore: score
+                        summativeScore: finalScore,
+                        isRemedial: isRemedialAttempt
+                      };
+                  }
+                  return module;
+              }),
+          };
+      }
+      return course;
+  });
+
+  setLocalData(COURSES_KEY, updatedCourses);
+  syncToCloud(updatedCourses);
+  return updatedCourses;
+};
+
+export const resetSummativeForRemedial = async (courseId: string, moduleId: string): Promise<Course[]> => {
+  const courses = await getCourses();
+  const updatedCourses = courses.map(course => {
+      if (course.id === courseId) {
+          return {
+              ...course,
+              modules: course.modules.map(module => {
+                  if (module.id === moduleId) {
+                      return { 
+                        ...module, 
+                        summativeSubmitted: false, // Reset status to allow retake
+                        // Keep previous score or clear it, we'll overwrite it anyway.
+                        // Important: Mark as Remedial so next score is capped
+                        isRemedial: true 
                       };
                   }
                   return module;

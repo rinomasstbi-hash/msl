@@ -13,14 +13,10 @@ const GradesPage: React.FC<GradesPageProps> = ({ courses }) => {
   const processedData = useMemo(() => {
     const data = courses.map(course => {
       const modules = course.modules.map(mod => {
-        const kbCount = mod.kbs.length;
-        const completedKbCount = mod.kbs.filter(k => k.isCompleted).length;
-        const progress = kbCount === 0 ? 0 : completedKbCount / kbCount;
-
-        // Mock scores calculation
-        const resumeScore = progress > 0 ? 88 : 0; 
-        const tugasScore = progress > 0 ? 92 : 0;
-        const keaktifanScore = progress > 0 ? 95 : 0;
+        // Now using REAL data from the module, defaulting to 0 if not set
+        const resumeScore = mod.resumeScore || 0; 
+        const tugasScore = mod.tugasScore || 0;
+        const keaktifanScore = mod.keaktifanScore || 0;
         const sumatifScore = mod.summativeScore || 0;
 
         const finalScore = 
@@ -52,7 +48,7 @@ const GradesPage: React.FC<GradesPageProps> = ({ courses }) => {
       };
     });
 
-    // Sort alphabetically by course name
+    // Sort alphabetically by course name (A-Z)
     return data.sort((a, b) => a.name.localeCompare(b.name));
   }, [courses]);
 

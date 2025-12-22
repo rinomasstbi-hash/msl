@@ -89,8 +89,12 @@ const createBasicCourse = (id: string, name: string, teacherId: string, moduleTi
       subject: name,
       order: 1,
       diagnosticSubmitted: false,
+      tugasSubmitted: false,
       summativeSubmitted: false, 
       summativeScore: 0,
+      resumeScore: 0,
+      tugasScore: 0,
+      keaktifanScore: 0,
       availableAt: '2023-10-01T00:00:00Z',
       kbs: [
         {
@@ -99,7 +103,8 @@ const createBasicCourse = (id: string, name: string, teacherId: string, moduleTi
           order: 1,
           content: `Materi pengantar untuk ${moduleTitle}...`,
           estimatedTime: 120,
-          isCompleted: false
+          isCompleted: false,
+          resumeContent: ''
         }
       ]
     }
@@ -118,8 +123,13 @@ export const MOCK_COURSES: Course[] = [
         subject: 'Matematika',
         order: 1,
         diagnosticSubmitted: false,
+        tugasSubmitted: false,
         summativeSubmitted: false, 
         summativeScore: 0,
+        // Mocking graded scores (Simulasi nilai dari guru)
+        resumeScore: 88, 
+        tugasScore: 92,
+        keaktifanScore: 95,
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
@@ -128,7 +138,8 @@ export const MOCK_COURSES: Course[] = [
             order: 1,
             content: 'Pythagoras adalah matematikawan Yunani...',
             estimatedTime: 120,
-            isCompleted: false
+            isCompleted: false,
+            resumeContent: ''
           },
           {
             id: 'kb-1-2',
@@ -136,7 +147,8 @@ export const MOCK_COURSES: Course[] = [
             order: 2,
             content: 'Rumus c^2 = a^2 + b^2 digunakan untuk...',
             estimatedTime: 180,
-            isCompleted: false
+            isCompleted: false,
+            resumeContent: ''
           }
         ]
       },
@@ -146,8 +158,12 @@ export const MOCK_COURSES: Course[] = [
         subject: 'Matematika',
         order: 2,
         diagnosticSubmitted: false,
+        tugasSubmitted: false,
         summativeSubmitted: false, 
         summativeScore: 0,
+        resumeScore: 0,
+        tugasScore: 0,
+        keaktifanScore: 0,
         availableAt: '2023-10-15T00:00:00Z',
         kbs: [
           {
@@ -156,7 +172,8 @@ export const MOCK_COURSES: Course[] = [
             order: 1,
             content: 'Mengenal titik pusat, jari-jari, diameter, busur, tali busur...',
             estimatedTime: 150,
-            isCompleted: false
+            isCompleted: false,
+            resumeContent: ''
           },
           {
             id: 'kb-2-2',
@@ -164,7 +181,8 @@ export const MOCK_COURSES: Course[] = [
             order: 2,
             content: 'Memahami nilai Pi dan rumus keliling (2.pi.r) serta luas (pi.r^2)...',
             estimatedTime: 200,
-            isCompleted: false
+            isCompleted: false,
+            resumeContent: ''
           }
         ]
       }

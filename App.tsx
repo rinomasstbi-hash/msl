@@ -12,6 +12,7 @@ import SummativeTest from './pages/SummativeTest';
 import DiagnosticTest from './pages/DiagnosticTest';
 import CoursesPage from './pages/CoursesPage';
 import GradesPage from './pages/GradesPage';
+import AssignmentUpload from './pages/AssignmentUpload';
 import * as api from './services/api';
 import { User, Course } from './types';
 
@@ -44,8 +45,8 @@ const App: React.FC = () => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const handleCompleteKB = async (courseId: string, kbId: string) => {
-    const updatedCourses = await api.updateKBCompletion(courseId, kbId);
+  const handleCompleteKB = async (courseId: string, kbId: string, resumeContent?: string) => {
+    const updatedCourses = await api.updateKBCompletion(courseId, kbId, resumeContent);
     setCourses(updatedCourses);
   };
 
@@ -59,8 +60,18 @@ const App: React.FC = () => {
     setCourses(updatedCourses);
   };
 
-  const handleSummativeScore = async (courseId: string, moduleId: string, score: number) => {
-    const updatedCourses = await api.updateSummativeScore(courseId, moduleId, score);
+  const handleSummativeScore = async (courseId: string, moduleId: string, score: number, isRemedial: boolean = false) => {
+    const updatedCourses = await api.updateSummativeScore(courseId, moduleId, score, isRemedial);
+    setCourses(updatedCourses);
+  };
+  
+  const handleRemedialStart = async (courseId: string, moduleId: string) => {
+     const updatedCourses = await api.resetSummativeForRemedial(courseId, moduleId);
+     setCourses(updatedCourses);
+  };
+
+  const handleAssignmentSubmit = async (courseId: string, moduleId: string, fileName: string) => {
+    const updatedCourses = await api.updateTugasSubmission(courseId, moduleId, fileName);
     setCourses(updatedCourses);
   };
 
@@ -145,8 +156,13 @@ const App: React.FC = () => {
                   />
                   
                   <Route 
+                    path="/tugas/:courseId/:moduleId" 
+                    element={<AssignmentUpload courses={courses} onSubmitAssignment={handleAssignmentSubmit} />} 
+                  />
+
+                  <Route 
                     path="/test/sumatif/:courseId/:moduleId" 
-                    element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} />} 
+                    element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} onStartRemedial={handleRemedialStart} />} 
                   />
                   
                   <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />

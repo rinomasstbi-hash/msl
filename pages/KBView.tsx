@@ -7,7 +7,7 @@ const KB_MIN_TIME = 10; // set to 10 seconds for testing demo, real world would 
 
 interface KBViewProps {
   courses: Course[];
-  onCompleteKB: (courseId: string, kbId: string) => void;
+  onCompleteKB: (courseId: string, kbId: string, resumeContent: string) => void;
   onResetKB: (courseId: string, kbId: string) => void;
 }
 
@@ -15,14 +15,27 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
   const { courseId, kbId } = useParams<{ courseId: string; kbId: string }>();
   const navigate = useNavigate();
   
+  const course = courses.find(c => c.id === courseId);
+  const kb = course?.modules.flatMap(m => m.kbs).find(k => k.id === kbId);
+
   const [secondsSpent, setSecondsSpent] = useState(0);
   const [resumeContent, setResumeContent] = useState('');
   const [showWarning, setShowWarning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'resume' | 'discussion'>('content');
   
-  const course = courses.find(c => c.id === courseId);
-  const kb = course?.modules.flatMap(m => m.kbs).find(k => k.id === kbId);
+  // Load saved content when KB changes
+  useEffect(() => {
+    if (kb?.resumeContent) {
+      setResumeContent(kb.resumeContent);
+    } else {
+      setResumeContent('');
+    }
+    // Set timer to max if already completed
+    if (kb?.isCompleted) {
+       setSecondsSpent(KB_MIN_TIME + 1);
+    }
+  }, [kb]);
 
   // Time-on-task tracker
   useEffect(() => {
@@ -36,19 +49,15 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
   }, [kb?.isCompleted]);
 
   const handleFinish = () => {
-    if (kb?.isCompleted) {
-       navigate(`/course/${courseId}`);
-       return;
-    }
-
-    if (secondsSpent < KB_MIN_TIME) {
+    // Save logic
+    if (secondsSpent < KB_MIN_TIME && !kb?.isCompleted) {
       setShowWarning(true);
       setTimeout(() => setShowWarning(false), 3000);
       return;
     }
     
-    if (!resumeContent.trim() || resumeContent.length < 100) {
-      alert("Resume harus minimal 100 karakter!");
+    if (!resumeContent.trim() || resumeContent.length < 50) {
+      alert("Resume harus minimal 50 karakter!");
       setActiveTab('resume');
       return;
     }
@@ -56,19 +65,23 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
     setIsSubmitting(true);
     // Simulate API call and similarity check
     setTimeout(() => {
-      alert("Materi Selesai! Resume Anda telah tersimpan dan divalidasi (Similarity: 12%).");
+      const action = kb?.isCompleted ? "Diperbarui" : "Disimpan";
+      alert(`Materi Selesai! Resume Anda telah ${action} dan divalidasi.`);
       if (courseId && kbId) {
-        onCompleteKB(courseId, kbId);
+        onCompleteKB(courseId, kbId, resumeContent);
       }
       navigate(`/course/${courseId}`);
+      setIsSubmitting(false);
     }, 1500);
   };
 
   const handleReset = () => {
-    if (window.confirm("Apakah Anda ingin mengulangi materi ini? Timer akan direset.")) {
+    if (window.confirm("PERINGATAN: Mengulangi materi akan MENGHAPUS resume yang sudah Anda ketik dan mereset timer belajar.\n\nApakah Anda yakin ingin memulai ulang dari nol?")) {
         if (courseId && kbId) {
             onResetKB(courseId, kbId);
             setSecondsSpent(0);
+            setResumeContent('');
+            setActiveTab('content');
         }
     }
   };
@@ -81,7 +94,7 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
   if (!kb) return <div>Materi tidak ditemukan</div>;
 
   return (
-    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8">
+    <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 pb-20">
       {/* Left Column: Content & Controls */}
       <div className="flex-1 space-y-6">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
@@ -128,16 +141,16 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
 
                 <textarea
                   className="w-full h-80 p-6 rounded-2xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 transition-all outline-none resize-none font-medium text-slate-700 leading-relaxed"
-                  placeholder={kb.isCompleted ? "Silakan edit resume Anda jika diperlukan untuk perbaikan nilai..." : "Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."}
+                  placeholder="Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."
                   value={resumeContent}
                   onChange={(e) => setResumeContent(e.target.value)}
                   onPaste={handlePaste}
                 ></textarea>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-slate-400">{resumeContent.length} / Minimal 100 Karakter</span>
+                  <span className="text-xs font-bold text-slate-400">{resumeContent.length} / Minimal 50 Karakter</span>
                   <div className="text-[10px] text-emerald-600 font-bold uppercase tracking-tighter">
-                    <i className="fa-solid fa-cloud-arrow-up mr-1"></i> Auto-saved to Cloud
+                    <i className="fa-solid fa-cloud-arrow-up mr-1"></i> Auto-saved locally
                   </div>
                 </div>
               </div>
@@ -160,43 +173,48 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 border-b border-slate-100 pb-4">Status Belajar</h4>
             
-            {kb.isCompleted ? (
-              <div className='text-center py-4'>
+            {kb.isCompleted && (
+              <div className='text-center py-4 animate-in zoom-in-95'>
                 <div className='w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full mx-auto flex items-center justify-center mb-4'>
                    <i className='fa-solid fa-check-double text-3xl'></i>
                 </div>
                 <h5 className='font-bold text-slate-800'>Materi Selesai</h5>
-                <p className='text-xs text-slate-500 mt-1 mb-6'>Anda bisa melanjutkan ke materi berikutnya.</p>
+                <p className='text-xs text-slate-500 mt-1 mb-6'>Resume tersimpan.</p>
                 
                 <button 
                     onClick={handleReset}
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center justify-center w-full py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                    className="text-xs font-bold text-red-400 hover:text-red-600 flex items-center justify-center w-full py-2 border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
                 >
                     <i className="fa-solid fa-rotate-left mr-2"></i>
-                    Ulangi Materi
+                    Reset Progress & Resume
                 </button>
               </div>
-            ) : (
-               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500">Durasi Sesi</span>
-                  <span className={`text-sm font-black ${secondsSpent < KB_MIN_TIME ? 'text-amber-500' : 'text-emerald-600'}`}>
-                    {Math.floor(secondsSpent / 60)}m {secondsSpent % 60}s
-                  </span>
-                </div>
+            )}
 
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
-                    <span>Threshold Kelulusan KB</span>
-                    <span>{Math.min(100, Math.round((secondsSpent / KB_MIN_TIME) * 100))}%</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 rounded-full ${secondsSpent < KB_MIN_TIME ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                      style={{ width: `${Math.min(100, (secondsSpent / KB_MIN_TIME) * 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
+            <div className={`space-y-6 ${kb.isCompleted ? 'mt-4 pt-4 border-t border-slate-100' : ''}`}>
+                {!kb.isCompleted && (
+                    <>
+                    <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500">Durasi Sesi</span>
+                    <span className={`text-sm font-black ${secondsSpent < KB_MIN_TIME ? 'text-amber-500' : 'text-emerald-600'}`}>
+                        {Math.floor(secondsSpent / 60)}m {secondsSpent % 60}s
+                    </span>
+                    </div>
+
+                    <div className="space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                        <span>Min. Waktu Baca</span>
+                        <span>{Math.min(100, Math.round((secondsSpent / KB_MIN_TIME) * 100))}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div 
+                        className={`h-full transition-all duration-500 rounded-full ${secondsSpent < KB_MIN_TIME ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                        style={{ width: `${Math.min(100, (secondsSpent / KB_MIN_TIME) * 100)}%` }}
+                        ></div>
+                    </div>
+                    </div>
+                    </>
+                )}
 
                 <button
                   onClick={handleFinish}
@@ -209,8 +227,8 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
                     <i className="fa-solid fa-circle-notch animate-spin"></i>
                   ) : (
                     <>
-                      <span>Selesaikan KB Ini</span>
-                      <i className="fa-solid fa-check-circle"></i>
+                      <span>{kb.isCompleted ? 'Simpan Perubahan' : 'Selesaikan KB Ini'}</span>
+                      <i className={`fa-solid ${kb.isCompleted ? 'fa-floppy-disk' : 'fa-check-circle'}`}></i>
                     </>
                   )}
                 </button>
@@ -220,8 +238,7 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => 
                     <i className="fa-solid fa-stopwatch mr-1"></i> Anda membaca terlalu cepat! Pahami materi dengan seksama.
                   </div>
                 )}
-              </div>
-            )}
+            </div>
            
           </div>
 

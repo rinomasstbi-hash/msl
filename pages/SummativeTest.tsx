@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Course } from '../types';
+import { Course, KKTP } from '../types';
 import { MOCK_SUMMATIVE_QUESTIONS } from '../services/seedData';
 
 interface SummativeTestProps {
   courses: Course[];
-  onCompleteSummative: (courseId: string, moduleId: string, score: number) => void;
+  onCompleteSummative: (courseId: string, moduleId: string, score: number, isRemedial: boolean) => void;
+  onStartRemedial: (courseId: string, moduleId: string) => void;
 }
 
-const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummative }) => {
+const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummative, onStartRemedial }) => {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const navigate = useNavigate();
   
@@ -26,22 +27,59 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     return <div>Ujian tidak ditemukan.</div>;
   }
 
-  // If already submitted, redirect or show score
+  // Handle Remedial Start
+  const handleStartRemedial = () => {
+      if (courseId && moduleId) {
+          onStartRemedial(courseId, moduleId);
+          // Local state reset handled by reloading or logic below, 
+          // but since onStartRemedial updates parent state which causes re-render of this component
+          // check if module.summativeSubmitted becomes false.
+          // However, for immediate feedback:
+          setTestStarted(true);
+          setAnswers(Array(MOCK_SUMMATIVE_QUESTIONS.length).fill(-1));
+          setCurrentQuestionIndex(0);
+      }
+  }
+
+  // If already submitted and NOT in remedial flow (summativeSubmitted is true)
   if (module.summativeSubmitted) {
+     const isBelowKKTP = module.summativeScore < KKTP;
+
      return (
         <div className="max-w-3xl mx-auto text-center py-10 animate-in fade-in duration-500">
-           <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200">
-             <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full mx-auto flex items-center justify-center mb-6">
-                <i className="fa-solid fa-trophy text-4xl"></i>
+           <div className={`p-8 rounded-2xl shadow-xl border ${isBelowKKTP ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+             <div className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-6 ${isBelowKKTP ? 'bg-red-100 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                <i className={`fa-solid ${isBelowKKTP ? 'fa-triangle-exclamation' : 'fa-trophy'} text-4xl`}></i>
              </div>
-             <h1 className="text-2xl font-black text-slate-800">Ujian Selesai!</h1>
-             <p className="text-lg text-slate-600 mt-2">Nilai Anda: <span className="font-bold text-emerald-600 text-2xl">{module.summativeScore}</span></p>
-             <Link 
-                to={`/course/${courseId}`}
-                className="mt-6 inline-block bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all"
-             >
-                Kembali ke UKBM
-             </Link>
+             <h1 className="text-2xl font-black text-slate-800">{isBelowKKTP ? 'Belum Tuntas' : 'Ujian Selesai!'}</h1>
+             
+             <div className="my-6">
+                <p className="text-lg text-slate-600">Nilai Anda:</p>
+                <p className={`text-5xl font-black my-2 ${isBelowKKTP ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {module.summativeScore}
+                </p>
+                <p className="text-sm font-bold text-slate-400">KKTP: {KKTP}</p>
+             </div>
+
+             {isBelowKKTP ? (
+                 <div className="space-y-4">
+                     <p className="text-red-700 font-medium">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).<br/>Silakan ikuti remedial untuk memperbaiki nilai.</p>
+                     <p className="text-xs text-slate-500">Catatan: Nilai Remedial maksimal {KKTP}.</p>
+                     <button 
+                        onClick={handleStartRemedial}
+                        className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
+                     >
+                        Ikuti Remedial Sekarang
+                     </button>
+                 </div>
+             ) : (
+                <Link 
+                    to={`/course/${courseId}`}
+                    className="inline-block bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all"
+                >
+                    Kembali ke UKBM
+                </Link>
+             )}
            </div>
         </div>
      )
@@ -82,13 +120,15 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     });
     
     const finalScore = Math.round((correctCount / MOCK_SUMMATIVE_QUESTIONS.length) * 100);
+    const isRemedialAttempt = !!module.isRemedial; // Check existing flag, or assume remedial if re-taking
 
     // Simulate processing delay
     setTimeout(() => {
         if (courseId && moduleId) {
-            onCompleteSummative(courseId, moduleId, finalScore);
+            onCompleteSummative(courseId, moduleId, finalScore, isRemedialAttempt);
         }
-        navigate(`/course/${courseId}`);
+        // Don't navigate away immediately, let the component re-render to show the result card (Remedial or Pass)
+        // navigate(`/course/${courseId}`);
     }, 1500);
   };
 
@@ -104,21 +144,21 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
             <i className="fa-solid fa-file-pen text-4xl"></i>
           </div>
           
-          <h1 className="text-2xl font-black text-slate-800">Tes Sumatif UKBM</h1>
+          <h1 className="text-2xl font-black text-slate-800">{module.isRemedial ? 'Remedial Sumatif' : 'Tes Sumatif UKBM'}</h1>
           <p className="text-lg font-semibold text-emerald-700 mt-1">{module.title}</p>
           <p className="text-sm text-slate-500 mt-2">Mata Pelajaran: {course.name}</p>
 
           <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl mt-8 text-left space-y-4">
             <h4 className="font-bold text-blue-800 text-center">
               <i className="fa-solid fa-circle-info mr-2"></i>
-              Peraturan Ujian
+              Peraturan Ujian {module.isRemedial && '(Mode Remedial)'}
             </h4>
             <ul className="text-sm text-blue-700 list-decimal list-inside space-y-2">
               <li>Waktu pengerjaan ujian estimasi <strong>15 Menit</strong>.</li>
               <li>Ujian terdiri dari {MOCK_SUMMATIVE_QUESTIONS.length} Soal Pilihan Ganda.</li>
+              <li>Minimal nilai ketuntasan (KKTP) adalah <strong>{KKTP}</strong>.</li>
+              {module.isRemedial && <li className="font-bold">Nilai maksimal Remedial adalah {KKTP}.</li>}
               <li>Dilarang membuka tab baru atau window lain selama ujian berlangsung.</li>
-              <li>Setiap pelanggaran akan dicatat oleh sistem monitoring.</li>
-              <li>Pastikan koneksi internet Anda stabil sebelum memulai.</li>
             </ul>
           </div>
 
@@ -127,7 +167,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
               onClick={() => setTestStarted(true)}
               className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 transition-all"
             >
-              Mulai Ujian Sekarang
+              {module.isRemedial ? 'Mulai Remedial' : 'Mulai Ujian Sekarang'}
             </button>
             <Link 
               to={`/course/${courseId}`}
@@ -183,7 +223,9 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="font-bold text-indigo-700">Soal {currentQuestionIndex + 1} dari {MOCK_SUMMATIVE_QUESTIONS.length}</h2>
-             <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">Sumatif Mode</span>
+             <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                {module.isRemedial ? 'Remedial Mode' : 'Sumatif Mode'}
+             </span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2">
             <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>

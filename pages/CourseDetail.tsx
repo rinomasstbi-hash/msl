@@ -14,7 +14,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
   if (!course) return <div>Course not found</div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <nav className="flex items-center space-x-2 text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">
@@ -118,41 +118,98 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
                   );
                 })}
                 
-                {/* Sumatif Node */}
-                <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${!mod.kbs.every(k => k.isCompleted) ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
-                  <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${
-                    mod.summativeSubmitted 
-                      ? 'bg-indigo-600'
-                      : mod.kbs.every(k => k.isCompleted) ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'
-                  }`}></div>
-                  
-                  <div className="flex-1 flex justify-between items-center">
-                    <div>
-                      <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5">Evaluation</p>
-                      <h4 className="font-bold text-slate-800">Tes Sumatif UKBM</h4>
-                    </div>
+                {/* Tugas Terstruktur Node */}
+                {(() => {
+                    const allKbsDone = mod.kbs.every(k => k.isCompleted);
+                    const isTugasLocked = !allKbsDone;
                     
-                    {mod.summativeSubmitted ? (
-                        <div className="flex items-center space-x-4">
-                           <div className="text-right hidden sm:block">
-                               <span className="text-xs font-bold text-slate-400 uppercase block">Nilai Kamu</span>
-                               <span className="text-lg font-black text-indigo-700">{mod.summativeScore}/100</span>
-                           </div>
-                           <div className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-2 border border-indigo-200">
-                                <i className="fa-solid fa-star"></i>
-                                <span>Selesai</span>
-                           </div>
+                    return (
+                    <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${isTugasLocked ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
+                        <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${mod.tugasSubmitted ? 'bg-purple-600' : isTugasLocked ? 'bg-slate-300' : 'bg-purple-400'}`}></div>
+                        
+                        <div className="flex-1 flex justify-between items-center">
+                            <div>
+                                <p className="text-[10px] font-bold text-purple-600 uppercase mb-0.5">Assignment</p>
+                                <h4 className="font-bold text-slate-800">Tugas Terstruktur</h4>
+                                <p className="text-xs text-slate-500 mt-1">Upload bukti pengerjaan LKS/Tugas</p>
+                            </div>
+                            
+                            {mod.tugasSubmitted ? (
+                                <div className="flex items-center space-x-2 bg-purple-50 text-purple-700 px-3 py-1.5 rounded-lg border border-purple-100">
+                                    <i className="fa-solid fa-check-circle"></i>
+                                    <span className="text-xs font-bold">Dikumpulkan</span>
+                                </div>
+                            ) : (
+                                <Link 
+                                    to={`/tugas/${course.id}/${mod.id}`}
+                                    className="bg-purple-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-purple-700 transition-all"
+                                >
+                                    Upload Tugas
+                                </Link>
+                            )}
                         </div>
-                    ) : (
-                        <Link 
-                        to={`/test/sumatif/${course.id}/${mod.id}`}
-                        className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all"
-                        >
-                        Mulai Ujian
-                        </Link>
-                    )}
-                  </div>
-                </div>
+                    </div>
+                    )
+                })()}
+
+                {/* Sumatif Node */}
+                {(() => {
+                    const allKbsDone = mod.kbs.every(k => k.isCompleted);
+                    const isSumatifLocked = !mod.tugasSubmitted; // Locked if Tugas not submitted
+                    
+                    return (
+                        <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${isSumatifLocked ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
+                        <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${
+                            mod.summativeSubmitted 
+                            ? 'bg-indigo-600'
+                            : !isSumatifLocked ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'
+                        }`}></div>
+                        
+                        <div className="flex-1 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div>
+                                <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5">Evaluation</p>
+                                <h4 className="font-bold text-slate-800">Tes Sumatif UKBM</h4>
+                                {isSumatifLocked && !allKbsDone && <p className="text-xs text-red-400 italic">Selesaikan semua KB & Tugas dahulu.</p>}
+                            </div>
+                            
+                            {mod.summativeSubmitted ? (
+                                <div className="flex flex-col items-end">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="text-right hidden sm:block">
+                                            <span className="text-xs font-bold text-slate-400 uppercase block">Nilai Kamu</span>
+                                            <span className={`text-lg font-black ${mod.summativeScore < 84 ? 'text-red-500' : 'text-indigo-700'}`}>
+                                                {mod.summativeScore}/100
+                                                {mod.isRemedial && <span className="text-xs text-slate-400 ml-1 font-normal">(Remedial)</span>}
+                                            </span>
+                                        </div>
+                                        <div className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-2 border border-indigo-200">
+                                                <i className="fa-solid fa-star"></i>
+                                                <span>Selesai</span>
+                                        </div>
+                                    </div>
+                                    {mod.summativeScore < 84 && (
+                                        <Link 
+                                            to={`/test/sumatif/${course.id}/${mod.id}`}
+                                            className="mt-2 text-xs font-bold text-red-500 hover:text-red-700 underline"
+                                        >
+                                            <i className="fa-solid fa-rotate-left mr-1"></i>
+                                            Nilai dibawah KKTP. Ikuti Remedial?
+                                        </Link>
+                                    )}
+                                </div>
+                            ) : (
+                                <Link 
+                                to={`/test/sumatif/${course.id}/${mod.id}`}
+                                className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all"
+                                >
+                                Mulai Ujian
+                                </Link>
+                            )}
+                        </div>
+                        </div>
+                    );
+                })()}
+
               </div>
             </div>
           </div>

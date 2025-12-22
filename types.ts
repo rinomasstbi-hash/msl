@@ -31,6 +31,7 @@ export interface KB {
   estimatedTime: number; // in seconds
   unlockDate?: string;
   isCompleted: boolean;
+  resumeContent?: string; // New: Persist user's resume
 }
 
 export interface Module {
@@ -39,8 +40,20 @@ export interface Module {
   subject: string;
   order: number;
   diagnosticSubmitted: boolean;
-  summativeSubmitted?: boolean; // New field for summative status
-  summativeScore?: number;      // New field for the score
+  
+  // Tugas Terstruktur Fields
+  tugasSubmitted?: boolean;
+  tugasFile?: string; // Mock URL or filename
+  
+  summativeSubmitted?: boolean; 
+  summativeScore?: number;
+  isRemedial?: boolean; // New: Flag if the current score is from a remedial attempt
+  
+  // Weighted scores fields
+  resumeScore?: number;
+  tugasScore?: number;
+  keaktifanScore?: number;
+
   kbs: KB[];
   availableAt: string;
 }
@@ -58,6 +71,8 @@ export interface GradeWeights {
   keaktifan: number;
   sumatif: number;
 }
+
+export const KKTP = 84; // Standard Minimum Score
 
 export interface StudentActivityLog {
   userId: string;
