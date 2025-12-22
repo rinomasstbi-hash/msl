@@ -4,13 +4,13 @@ import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwGyjfvOT8rTgxcrrBIEft0QiCgIen79SVMs_IKewW6RDmV4S6R0Y7Z9tdzj8SGi8/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxafZmZjAZoVhjG0pLsNag_KOFq6BvJrsadt6qVDkle7-3otNUcnIL37fEUwCpkd6A/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 // Increment this version whenever you add new Seed Data (like UKBM 2) to force client update
-const CURRENT_DATA_VERSION = '1.4'; 
+const CURRENT_DATA_VERSION = '1.4a'; 
 
 // --- Helper functions to interact with localStorage (Fallback) ---
 const getLocalData = <T>(key: string): T | null => {
@@ -93,6 +93,38 @@ export const login = async (email: string, password: string): Promise<User | nul
     }
   }
   return null;
+};
+
+export const changePassword = async (oldPassword: string, newPassword: string): Promise<{success: boolean, message: string}> => {
+  const user = getLocalData<User>(USER_KEY);
+  if (!user) return { success: false, message: "Sesi habis, silakan login ulang." };
+
+  if (GOOGLE_SCRIPT_URL) {
+      try {
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify({
+                  action: 'changePassword',
+                  email: user.email, 
+                  oldPassword: oldPassword,
+                  newPassword: newPassword
+              })
+          });
+          const result = await response.json();
+          return result;
+      } catch (e) {
+          console.error(e);
+          return { success: false, message: "Gagal terhubung ke server (Network Error)." };
+      }
+  }
+
+  // Fallback for demo users (Mock)
+  await apiDelay(800);
+  if (oldPassword === '123456') {
+      return { success: true, message: "Password berhasil diubah (Mode Offline/Simulasi)." };
+  } else {
+      return { success: false, message: "Password lama salah." };
+  }
 };
 
 // --- DATA MERGING STRATEGY (CRITICAL FOR LMS) ---

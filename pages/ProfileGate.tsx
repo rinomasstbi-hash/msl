@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
+import * as api from '../services/api';
 
 interface ProfileGateProps {
   user: User;
@@ -11,9 +12,16 @@ interface ProfileGateProps {
 const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Modes: View, EditProfile, ChangePassword
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isProcessingImg, setIsProcessingImg] = useState(false);
   
+  // Change Password State
+  const [passData, setPassData] = useState({ oldPass: '', newPass: '', confirmPass: '' });
+  const [passLoading, setPassLoading] = useState(false);
+
   // Initialize from Actual User Data
   const [formData, setFormData] = useState({
     // Editable Fields
@@ -35,7 +43,6 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     e.preventDefault();
     if (isFormValid) {
       // Create updated User object
-      // Note: NISN, Name, Class, Semester are taken directly from the 'user' prop (Source of Truth), not formData
       const updatedUser: User = { 
           ...user, 
           profileComplete: true, 
@@ -47,17 +54,45 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
       };
 
       if (!user.profileComplete) {
-        // First time completion
         onProfileUpdate(updatedUser);
         navigate('/');
       } else {
-        // Editing existing profile
         onProfileUpdate(updatedUser);
         alert(isEmailChanged 
             ? "Profil dan Email berhasil diperbarui! Gunakan email baru ini untuk login berikutnya." 
             : "Profil berhasil diperbarui!");
         setIsEditing(false);
       }
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (passData.newPass !== passData.confirmPass) {
+        alert("Konfirmasi password tidak cocok.");
+        return;
+    }
+    if (passData.newPass.length < 6) {
+        alert("Password baru minimal 6 karakter.");
+        return;
+    }
+
+    setPassLoading(true);
+    try {
+        const result = await api.changePassword(passData.oldPass, passData.newPass);
+        if (result.success) {
+            alert("Password berhasil diubah!");
+            setIsChangingPassword(false);
+            setPassData({ oldPass: '', newPass: '', confirmPass: '' });
+        } else {
+            alert(`Gagal: ${result.message}`);
+        }
+    } catch (error) {
+        alert("Terjadi kesalahan sistem.");
+    } finally {
+        setPassLoading(false);
     }
   };
   
@@ -84,8 +119,6 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     const file = e.target.files?.[0];
     if (file) {
         setIsProcessingImg(true);
-        
-        // 1. Validasi Tipe File
         if (!file.type.startsWith('image/')) {
             alert('Mohon upload file gambar (JPG/PNG).');
             setIsProcessingImg(false);
@@ -96,11 +129,10 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
         reader.onload = (readerEvent) => {
             const img = new Image();
             img.onload = () => {
-                // 2. RESIZE & KOMPRESI IMAGE
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                const maxSize = 150; // Max dimensi pixel
+                const maxSize = 150; 
                 let width = img.width;
                 let height = img.height;
 
@@ -144,6 +176,77 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
     }
   };
 
+  // --- MODE: GANTI PASSWORD ---
+  if (isChangingPassword) {
+      return (
+        <div className="max-w-md mx-auto space-y-6 py-12 animate-in fade-in duration-300">
+           <div className="text-center">
+               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-500">
+                   <i className="fa-solid fa-lock text-2xl"></i>
+               </div>
+               <h2 className="text-2xl font-black text-slate-800">Ganti Password</h2>
+               <p className="text-slate-500">Amankan akun Anda dengan password baru.</p>
+           </div>
+           
+           <form onSubmit={handlePasswordSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-4">
+               <div className="space-y-2">
+                   <label className="text-sm font-bold text-slate-700">Password Lama</label>
+                   <input 
+                      type="password" 
+                      required
+                      value={passData.oldPass}
+                      onChange={(e) => setPassData({...passData, oldPass: e.target.value})}
+                      className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      placeholder="••••••••"
+                   />
+               </div>
+               <div className="space-y-2">
+                   <label className="text-sm font-bold text-slate-700">Password Baru</label>
+                   <input 
+                      type="password" 
+                      required
+                      value={passData.newPass}
+                      onChange={(e) => setPassData({...passData, newPass: e.target.value})}
+                      className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                      placeholder="Minimal 6 karakter"
+                   />
+               </div>
+               <div className="space-y-2">
+                   <label className="text-sm font-bold text-slate-700">Konfirmasi Password Baru</label>
+                   <input 
+                      type="password" 
+                      required
+                      value={passData.confirmPass}
+                      onChange={(e) => setPassData({...passData, confirmPass: e.target.value})}
+                      className={`w-full p-3 rounded-xl border focus:ring-2 outline-none transition-all ${passData.confirmPass && passData.newPass !== passData.confirmPass ? 'border-red-300 focus:ring-red-500 bg-red-50' : 'border-slate-300 focus:ring-emerald-500'}`}
+                      placeholder="Ulangi password baru"
+                   />
+               </div>
+               
+               <div className="pt-4 flex space-x-3">
+                   <button 
+                      type="button"
+                      onClick={() => {
+                          setIsChangingPassword(false);
+                          setPassData({ oldPass: '', newPass: '', confirmPass: '' });
+                      }}
+                      className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                   >
+                       Batal
+                   </button>
+                   <button 
+                      type="submit"
+                      disabled={passLoading}
+                      className={`flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-colors flex items-center justify-center ${passLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                   >
+                       {passLoading ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Simpan'}
+                   </button>
+               </div>
+           </form>
+        </div>
+      )
+  }
+
   // --- VIEW MODE (Read Only) ---
   if (user.profileComplete && !isEditing) {
     return (
@@ -156,7 +259,6 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
             </div>
           </div>
           <h1 className="text-2xl font-black text-slate-800">{user.name}</h1>
-          {/* Removed email display here as requested */}
           <span className="mt-2 inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full uppercase">{user.role}</span>
         </div>
         
@@ -203,7 +305,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
 
           <div className="flex items-center space-x-4 pt-6 border-t border-slate-100">
              <button
-              onClick={() => alert('Fitur ubah password akan segera tersedia!')}
+              onClick={() => setIsChangingPassword(true)}
               className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
             >
               Ubah Password
