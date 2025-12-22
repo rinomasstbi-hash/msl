@@ -8,9 +8,10 @@ const KB_MIN_TIME = 10; // set to 10 seconds for testing demo, real world would 
 interface KBViewProps {
   courses: Course[];
   onCompleteKB: (courseId: string, kbId: string) => void;
+  onResetKB: (courseId: string, kbId: string) => void;
 }
 
-const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
+const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB, onResetKB }) => {
   const { courseId, kbId } = useParams<{ courseId: string; kbId: string }>();
   const navigate = useNavigate();
   
@@ -61,6 +62,15 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
       }
       navigate(`/course/${courseId}`);
     }, 1500);
+  };
+
+  const handleReset = () => {
+    if (window.confirm("Apakah Anda ingin mengulangi materi ini? Timer akan direset.")) {
+        if (courseId && kbId) {
+            onResetKB(courseId, kbId);
+            setSecondsSpent(0);
+        }
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -117,9 +127,8 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
                 </div>
 
                 <textarea
-                  readOnly={kb.isCompleted}
                   className="w-full h-80 p-6 rounded-2xl border-2 border-slate-100 focus:border-emerald-500 focus:ring-0 transition-all outline-none resize-none font-medium text-slate-700 leading-relaxed"
-                  placeholder={kb.isCompleted ? "Anda sudah menyelesaikan resume untuk materi ini." : "Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."}
+                  placeholder={kb.isCompleted ? "Silakan edit resume Anda jika diperlukan untuk perbaikan nilai..." : "Ketikkan ringkasan materi menggunakan bahasa Anda sendiri di sini..."}
                   value={resumeContent}
                   onChange={(e) => setResumeContent(e.target.value)}
                   onPaste={handlePaste}
@@ -157,7 +166,15 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
                    <i className='fa-solid fa-check-double text-3xl'></i>
                 </div>
                 <h5 className='font-bold text-slate-800'>Materi Selesai</h5>
-                <p className='text-xs text-slate-500 mt-1'>Anda bisa melanjutkan ke materi berikutnya.</p>
+                <p className='text-xs text-slate-500 mt-1 mb-6'>Anda bisa melanjutkan ke materi berikutnya.</p>
+                
+                <button 
+                    onClick={handleReset}
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center justify-center w-full py-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                    <i className="fa-solid fa-rotate-left mr-2"></i>
+                    Ulangi Materi
+                </button>
               </div>
             ) : (
                <div className="space-y-6">

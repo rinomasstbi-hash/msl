@@ -7,7 +7,9 @@ export const MOCK_USER: User = {
   role: UserRole.STUDENT,
   profileComplete: false, // Start with incomplete profile to test the gate
   email: 'fauzi@mtsn4jombang.sch.id',
-  avatar: 'https://picsum.photos/200'
+  avatar: 'https://picsum.photos/200',
+  className: 'Kelas 8-A',
+  semester: 'Semester III (Ganjil)' // Updated logic: Class 8 Sem 1 is Semester III
 };
 
 export const MOCK_DIAGNOSTIC_QUESTIONS = [
@@ -71,10 +73,39 @@ export const MOCK_SUMMATIVE_QUESTIONS = [
   }
 ];
 
+// Helper to create basic structure for other courses
+const createBasicCourse = (id: string, name: string, teacherId: string, moduleTitle: string): Course => ({
+  id,
+  name,
+  teacherId,
+  modules: [
+    {
+      id: `mod-${id}-1`,
+      title: moduleTitle,
+      subject: name,
+      order: 1,
+      diagnosticSubmitted: false,
+      summativeSubmitted: false, 
+      summativeScore: 0,
+      availableAt: '2023-10-01T00:00:00Z',
+      kbs: [
+        {
+          id: `kb-${id}-1`,
+          title: `Pengantar ${moduleTitle}`,
+          order: 1,
+          content: `Materi pengantar untuk ${moduleTitle}...`,
+          estimatedTime: 120,
+          isCompleted: false
+        }
+      ]
+    }
+  ]
+});
+
 export const MOCK_COURSES: Course[] = [
   {
     id: 'course-math',
-    name: 'Matematika - Kelas 8',
+    name: 'Matematika',
     teacherId: 'teacher-001',
     modules: [
       {
@@ -134,7 +165,21 @@ export const MOCK_COURSES: Course[] = [
         ]
       }
     ]
-  }
+  },
+  createBasicCourse('course-ipa', 'Ilmu Pengetahuan Alam', 'teacher-002', 'Sistem Pencernaan'),
+  createBasicCourse('course-ips', 'Ilmu Pengetahuan Sosial', 'teacher-003', 'Mobilitas Sosial'),
+  createBasicCourse('course-bindo', 'Bahasa Indonesia', 'teacher-004', 'Teks Eksplanasi'),
+  createBasicCourse('course-bing', 'Bahasa Inggris', 'teacher-005', 'Recount Text'),
+  createBasicCourse('course-qh', 'Al-Qur\'an Hadis', 'teacher-006', 'Hukum Bacaan Mad'),
+  createBasicCourse('course-aa', 'Akidah Akhlak', 'teacher-007', 'Adab Kepada Orang Tua'),
+  createBasicCourse('course-fikih', 'Fikih', 'teacher-008', 'Sujud Sahwi'),
+  createBasicCourse('course-ski', 'Sejarah Kebudayaan Islam', 'teacher-009', 'Dinasti Abbasiyah'),
+  createBasicCourse('course-barab', 'Bahasa Arab', 'teacher-010', 'At-Ta\'aruf'),
+  createBasicCourse('course-pkn', 'PPKn', 'teacher-011', 'Tata Tertib Sekolah'),
+  createBasicCourse('course-pjok', 'PJOK', 'teacher-012', 'Permainan Bola Besar'),
+  createBasicCourse('course-sb', 'Seni Budaya', 'teacher-013', 'Menggambar Ilustrasi'),
+  createBasicCourse('course-prakarya', 'Prakarya', 'teacher-014', 'Kerajinan Bahan Lunak'),
+  createBasicCourse('course-info', 'Informatika', 'teacher-015', 'Berpikir Komputasional')
 ];
 
 export const GRADE_WEIGHTS = {

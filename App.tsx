@@ -42,6 +42,11 @@ const App: React.FC = () => {
     setCourses(updatedCourses);
   };
 
+  const handleResetKB = async (courseId: string, kbId: string) => {
+    const updatedCourses = await api.resetKBCompletion(courseId, kbId);
+    setCourses(updatedCourses);
+  };
+
   const handleDiagnosticComplete = async (courseId: string, moduleId: string) => {
     const updatedCourses = await api.updateDiagnosticCompletion(courseId, moduleId);
     setCourses(updatedCourses);
@@ -105,7 +110,10 @@ const App: React.FC = () => {
                   <Route path="/" element={<Dashboard user={user} courses={courses} />} />
                   <Route path="/courses" element={<CoursesPage courses={courses} />} />
                   <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
-                  <Route path="/kb/:courseId/:kbId" element={<KBView courses={courses} onCompleteKB={handleCompleteKB} />} />
+                  <Route 
+                    path="/kb/:courseId/:kbId" 
+                    element={<KBView courses={courses} onCompleteKB={handleCompleteKB} onResetKB={handleResetKB} />} 
+                  />
                   
                   <Route 
                     path="/test/sumatif/:courseId/:moduleId" 

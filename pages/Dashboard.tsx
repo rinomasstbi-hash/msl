@@ -136,7 +136,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                     <i className="fa-solid fa-shapes text-3xl opacity-30"></i>
                 </div>
                 <div className="mt-2 text-xs bg-emerald-700/50 inline-block px-2 py-1 rounded w-max">
-                   Fase D - Semester 1
+                   Fase D - Semester III
                 </div>
              </div>
              
@@ -161,52 +161,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
              </div>
         </div>
       </div>
-
-      <section>
-        <div className="flex items-center justify-between mb-4">
-           <h2 className="font-bold text-slate-800 text-lg">Mata Pelajaran Saya</h2>
-           <Link to="/courses" className="text-sm font-bold text-emerald-600 hover:text-emerald-800">Lihat Semua</Link>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {courses.slice(0, 3).map((course, idx) => {
-              // Calculate specific course progress
-              let courseTotalKBs = 0;
-              let courseCompletedKBs = 0;
-              course.modules.forEach(m => {
-                  courseTotalKBs += m.kbs.length;
-                  courseCompletedKBs += m.kbs.filter(k => k.isCompleted).length;
-              });
-              const percent = courseTotalKBs === 0 ? 0 : Math.round((courseCompletedKBs/courseTotalKBs) * 100);
-
-              return (
-                <Link key={course.id} to={`/course/${course.id}`} className="bg-white p-5 rounded-2xl border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all group">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-bold">
-                            {idx + 1}
-                        </div>
-                        <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">
-                            {percent}%
-                        </span>
-                    </div>
-                    <h3 className="font-bold text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors truncate">{course.name}</h3>
-                    <p className="text-xs text-slate-400 mb-4 truncate">Ust. Muhammad Ali, M.Pd</p>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${percent}%` }}></div>
-                    </div>
-                </Link>
-              )
-          })}
-          
-          <div className="bg-slate-50 p-5 rounded-2xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
-            <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-400 mb-2">
-                 <i className="fa-solid fa-plus"></i>
-            </div>
-            <p className="text-sm font-bold text-slate-500">Mata Pelajaran Lain</p>
-            <p className="text-xs text-slate-400">Akan segera tersedia sesuai jadwal.</p>
-          </div>
-        </div>
-      </section>
 
       <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">

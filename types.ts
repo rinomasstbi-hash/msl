@@ -13,6 +13,8 @@ export interface User {
   profileComplete: boolean;
   avatar?: string;
   email: string;
+  className?: string; // e.g. "8-A"
+  semester?: string;  // e.g. "Ganjil 2024/2025"
 }
 
 export interface KB {

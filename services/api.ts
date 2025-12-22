@@ -10,7 +10,7 @@ const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 // Increment this version whenever you add new Seed Data (like UKBM 2) to force client update
-const CURRENT_DATA_VERSION = '1.2'; 
+const CURRENT_DATA_VERSION = '1.3'; 
 
 // --- Helper functions to interact with localStorage (Fallback) ---
 const getLocalData = <T>(key: string): T | null => {
@@ -88,8 +88,8 @@ export const initializeData = (): void => {
   if (storedVersion !== CURRENT_DATA_VERSION) {
     console.log(`Verison update (${CURRENT_DATA_VERSION}). Refreshing Seed Data structure.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
-    // We don't hard overwrite USER_KEY here to preserve login state if possible,
-    // but we ensure MOCK_USER is available if empty.
+    // Force refresh USER data to apply new Semester logic
+    setLocalData(USER_KEY, MOCK_USER);
   }
   
   if (!getLocalData(USER_KEY)) {
@@ -118,6 +118,8 @@ export const getUser = async (): Promise<User> => {
         role: data.role || MOCK_USER.role,
         email: data.email || MOCK_USER.email,
         profileComplete: data.profileComplete,
+        className: data.className || MOCK_USER.className,
+        semester: data.semester || MOCK_USER.semester
       };
     } catch (e) {
       console.warn("Gagal connect ke Spreadsheet, fallback ke LocalStorage", e);
@@ -228,6 +230,32 @@ export const updateKBCompletion = async (courseId: string, kbId: string): Promis
           kbs: module.kbs.map(kb => {
             if (kb.id === kbId) {
               return { ...kb, isCompleted: true };
+            }
+            return kb;
+          }),
+        })),
+      };
+    }
+    return course;
+  });
+
+  setLocalData(COURSES_KEY, updatedCourses);
+  syncToCloud(updatedCourses);
+  return updatedCourses;
+};
+
+export const resetKBCompletion = async (courseId: string, kbId: string): Promise<Course[]> => {
+  const courses = await getCourses();
+  
+  const updatedCourses = courses.map(course => {
+    if (course.id === courseId) {
+      return {
+        ...course,
+        modules: course.modules.map(module => ({
+          ...module,
+          kbs: module.kbs.map(kb => {
+            if (kb.id === kbId) {
+              return { ...kb, isCompleted: false }; // Set to FALSE
             }
             return kb;
           }),

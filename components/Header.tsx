@@ -29,7 +29,26 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick }) => {
       </div>
 
       <div className="flex items-center space-x-4 md:space-x-6">
-        <button className="relative text-slate-500 hover:text-emerald-700 transition-colors hidden sm:block">
+        
+        {/* Class and Semester Status Display */}
+        {(user.className || user.semester) && (
+            <div className="hidden lg:flex items-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 space-x-4">
+                {user.className && (
+                    <div className="text-right border-r border-slate-200 pr-4">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
+                        <span className="block text-sm font-bold text-slate-700">{user.className}</span>
+                    </div>
+                )}
+                {user.semester && (
+                     <div className="text-right">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Semester</span>
+                        <span className="block text-sm font-bold text-emerald-600">{user.semester}</span>
+                    </div>
+                )}
+            </div>
+        )}
+
+        <button className="relative text-slate-500 hover:text-emerald-700 transition-colors hidden sm:block ml-2">
           <i className="fa-solid fa-bell text-xl"></i>
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white font-bold">3</span>
         </button>
