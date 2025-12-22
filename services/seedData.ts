@@ -9,7 +9,7 @@ export const MOCK_USER: User = {
   email: 'fauzi@mtsn4jombang.sch.id',
   avatar: 'https://picsum.photos/200',
   className: 'Kelas 8-A',
-  semester: 'Semester III (Ganjil)' // Updated logic: Class 8 Sem 1 is Semester III
+  semester: 'Semester III' // Standardized for logic comparison
 };
 
 export const MOCK_DIAGNOSTIC_QUESTIONS = [

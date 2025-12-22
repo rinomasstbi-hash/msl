@@ -20,6 +20,9 @@ const App: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // State for Semester Dropdown
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -30,6 +33,10 @@ const App: React.FC = () => {
       ]);
       setUser(userData);
       setCourses(coursesData);
+      // Initialize dropdown with user's actual semester
+      if (userData.semester) {
+        setSelectedSemester(userData.semester);
+      }
       setIsLoading(false);
     };
     loadData();
@@ -60,6 +67,10 @@ const App: React.FC = () => {
   const handleProfileUpdate = async (updatedUser: User) => {
       const savedUser = await api.updateUser(updatedUser);
       setUser(savedUser);
+      // Ensure dropdown updates if profile update changed semester
+      if (savedUser.semester) {
+        setSelectedSemester(savedUser.semester);
+      }
   };
   
   if (isLoading || !user) {
@@ -73,17 +84,19 @@ const App: React.FC = () => {
     );
   }
 
-  // Profile Lock Logic
+  // Logic: Check if the selected semester matches the user's active semester
+  const isActiveSemester = user.semester === selectedSemester;
   const isProfileLocked = !user.profileComplete;
 
   return (
     <HashRouter>
       <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
-        {/* Sidebar with mobile state */}
+        {/* Sidebar with mobile state - Grayed out if inactive semester */}
         <Sidebar 
           role={user.role} 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
+          disabled={!isActiveSemester}
         />
         
         {/* Mobile Backdrop */}
@@ -95,9 +108,26 @@ const App: React.FC = () => {
         )}
 
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-          <Header user={user} onMenuClick={toggleSidebar} />
+          {/* Header remains active to allow changing semester back */}
+          <Header 
+            user={user} 
+            onMenuClick={toggleSidebar} 
+            selectedSemester={selectedSemester}
+            onSemesterChange={setSelectedSemester}
+          />
           
-          <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+          {/* Main content area - Applies gray effect if inactive semester */}
+          <main className={`flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar transition-all duration-300 ${!isActiveSemester ? 'grayscale opacity-40 pointer-events-none select-none' : ''}`}>
+            {!isActiveSemester && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <div className="bg-white/90 p-6 rounded-2xl shadow-2xl text-center border-2 border-slate-200">
+                        <i className="fa-solid fa-lock text-4xl text-slate-400 mb-4"></i>
+                        <h2 className="text-xl font-bold text-slate-800">Arsip Semester</h2>
+                        <p className="text-sm text-slate-500 mt-2">Anda sedang melihat data periode yang tidak aktif.<br/>Kembali ke semester aktif untuk melanjutkan belajar.</p>
+                    </div>
+                </div>
+            )}
+            
             <Routes>
               {isProfileLocked ? (
                 <>
@@ -106,7 +136,6 @@ const App: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {/* Updated Dashboard Route to receive courses */}
                   <Route path="/" element={<Dashboard user={user} courses={courses} />} />
                   <Route path="/courses" element={<CoursesPage courses={courses} />} />
                   <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
@@ -122,7 +151,6 @@ const App: React.FC = () => {
                   
                   <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
                   
-                  {/* Updated Grades Route */}
                   <Route path="/grades" element={<GradesPage courses={courses} />} />
                   
                   <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />

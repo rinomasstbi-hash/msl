@@ -6,45 +6,59 @@ import { User } from '../types';
 interface HeaderProps {
   user: User;
   onMenuClick: () => void;
+  selectedSemester: string;
+  onSemesterChange: (sem: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onMenuClick }) => {
+const SEMESTER_OPTIONS = [
+  'Semester I',
+  'Semester II',
+  'Semester III',
+  'Semester IV',
+  'Semester V',
+  'Semester VI',
+];
+
+const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, onSemesterChange }) => {
   return (
     <header className="h-20 bg-white border-b border-slate-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm flex-shrink-0">
-      <div className="flex items-center">
+      <div className="flex items-center space-x-4">
          <button 
            onClick={onMenuClick}
            className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-emerald-700 transition-colors"
          >
            <i className="fa-solid fa-bars-staggered text-xl"></i>
          </button>
-         <div className="ml-2 lg:ml-0 flex flex-col md:hidden">
-            <span className="font-bold text-emerald-800 leading-tight">MSL Jombang</span>
-         </div>
          
-         <div className="hidden md:flex flex-col ml-4 lg:ml-0">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Madrasah Smart Learning</span>
-            <h2 className="font-bold text-slate-800">MTsN 4 Jombang</h2>
+         {/* Dropdown Semester Replaces App Title */}
+         <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+               <i className="fa-solid fa-calendar-days text-emerald-600"></i>
+            </div>
+            <select
+                value={selectedSemester}
+                onChange={(e) => onSemesterChange(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-800 text-sm font-bold rounded-xl focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 p-2.5 pr-8 cursor-pointer hover:bg-slate-100 transition-colors appearance-none"
+            >
+                {SEMESTER_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <i className="fa-solid fa-chevron-down text-xs text-slate-400"></i>
+            </div>
          </div>
       </div>
 
       <div className="flex items-center space-x-4 md:space-x-6">
         
-        {/* Class and Semester Status Display */}
-        {(user.className || user.semester) && (
-            <div className="hidden lg:flex items-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 space-x-4">
-                {user.className && (
-                    <div className="text-right border-r border-slate-200 pr-4">
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
-                        <span className="block text-sm font-bold text-slate-700">{user.className}</span>
-                    </div>
-                )}
-                {user.semester && (
-                     <div className="text-right">
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Semester</span>
-                        <span className="block text-sm font-bold text-emerald-600">{user.semester}</span>
-                    </div>
-                )}
+        {/* Class Only (Semester moved to left dropdown) */}
+        {user.className && (
+            <div className="hidden lg:flex items-center bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                <div className="text-right">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
+                    <span className="block text-sm font-bold text-slate-700">{user.className}</span>
+                </div>
             </div>
         )}
 

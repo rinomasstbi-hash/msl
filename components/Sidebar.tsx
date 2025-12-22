@@ -7,9 +7,10 @@ interface SidebarProps {
   role: UserRole;
   isOpen: boolean;
   onClose: () => void;
+  disabled?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = false }) => {
   const links = [
     { to: '/', icon: 'fa-house', label: 'Dashboard' },
     { to: '/courses', icon: 'fa-book-open', label: 'Mata Pelajaran' },
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose }) => {
     fixed inset-y-0 left-0 z-50 w-64 bg-emerald-900 text-white flex flex-col transition-transform duration-300 ease-in-out
     lg:static lg:translate-x-0
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+    ${disabled ? 'grayscale opacity-70 pointer-events-none' : ''}
   `;
 
   return (
@@ -66,8 +68,8 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose }) => {
         <div className="bg-emerald-800 p-4 rounded-xl">
           <p className="text-[10px] font-bold text-emerald-400 mb-1 uppercase tracking-widest">Status Sistem</p>
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-sm font-semibold">Online & Linear</span>
+            <div className={`w-2 h-2 rounded-full ${disabled ? 'bg-slate-400' : 'bg-green-400 animate-pulse'}`}></div>
+            <span className="text-sm font-semibold">{disabled ? 'Arsip Mode' : 'Online & Linear'}</span>
           </div>
         </div>
       </div>
