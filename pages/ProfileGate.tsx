@@ -28,6 +28,9 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
   // Validasi form: Pastikan data wajib terisi
   const isFormValid = formData.email && formData.address && formData.parentName && formData.phone && formData.agreed;
 
+  // Deteksi perubahan email
+  const isEmailChanged = user.email && formData.email !== user.email;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid) {
@@ -50,7 +53,9 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
       } else {
         // Editing existing profile
         onProfileUpdate(updatedUser);
-        alert("Profil berhasil diperbarui!");
+        alert(isEmailChanged 
+            ? "Profil dan Email berhasil diperbarui! Gunakan email baru ini untuk login berikutnya." 
+            : "Profil berhasil diperbarui!");
         setIsEditing(false);
       }
     }
@@ -305,6 +310,23 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
                 <i className="fa-solid fa-pen-to-square mr-2"></i>
                 Data Pribadi & Kontak
              </h4>
+
+             {/* ALERT PERUBAHAN EMAIL */}
+             {isEmailChanged && (
+                 <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start space-x-3 animate-in fade-in">
+                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 flex-shrink-0">
+                        <i className="fa-solid fa-key"></i>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-amber-800">Perhatian: Kredensial Login Berubah</h4>
+                        <p className="text-xs text-amber-700 mt-1">
+                            Anda mengubah email dari <strong>{user.email}</strong> menjadi <strong>{formData.email}</strong>. 
+                            Pastikan email baru ini aktif karena akan digunakan untuk login selanjutnya.
+                        </p>
+                    </div>
+                 </div>
+             )}
+
              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700">Alamat Email</label>
@@ -313,7 +335,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="nama@contoh.com" 
-                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 transition-all outline-none" 
+                    className={`w-full p-3 rounded-xl border focus:ring-2 focus:ring-emerald-500 transition-all outline-none ${isEmailChanged ? 'border-amber-400 bg-amber-50/50 text-amber-900 font-bold' : 'border-slate-200'}`}
                     />
                 </div>
                 <div className="space-y-2">

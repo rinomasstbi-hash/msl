@@ -4,7 +4,7 @@ import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytcQ0VrgfO0x9_CsWMq4hZN1yy5JV7eIQwNAFtv3MBeFUq-oKeSOMoAW5ECyedtgk/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwwGyjfvOT8rTgxcrrBIEft0QiCgIen79SVMs_IKewW6RDmV4S6R0Y7Z9tdzj8SGi8/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
