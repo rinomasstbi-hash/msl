@@ -31,6 +31,8 @@ export interface Module {
   subject: string;
   order: number;
   diagnosticSubmitted: boolean;
+  summativeSubmitted?: boolean; // New field for summative status
+  summativeScore?: number;      // New field for the score
   kbs: KB[];
   availableAt: string;
 }

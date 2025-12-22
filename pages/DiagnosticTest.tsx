@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Course } from '../types';
@@ -88,7 +89,7 @@ const DiagnosticTest: React.FC<DiagnosticTestProps> = ({ courses, onCompleteDiag
               to={`/course/${courseId}`}
               className="inline-block text-slate-500 font-semibold text-sm hover:text-emerald-700 transition-colors"
             >
-              Kembali ke Detail Modul
+              Kembali ke Detail UKBM
             </Link>
           </div>
         </div>

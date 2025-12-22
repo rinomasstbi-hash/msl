@@ -32,7 +32,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ courses }) => {
               <div className="space-y-2">
                 <div className="flex justify-between text-[10px] font-bold uppercase text-slate-400">
                   <span>Progress Belajar</span>
-                  <span>1 / {course.modules.length} Bab</span>
+                  <span>1 / {course.modules.length} UKBM</span>
                 </div>
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-500 w-1/3 rounded-full transition-all duration-1000"></div>

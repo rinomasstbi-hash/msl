@@ -111,7 +111,7 @@ const KBView: React.FC<KBViewProps> = ({ courses, onCompleteKB }) => {
                   </h4>
                   <ul className="text-xs text-blue-700 mt-1 list-disc list-inside">
                     <li>Dilarang menyalin (paste) teks dari sumber lain.</li>
-                    <li>Sistem mendeteksi kemiripan kata antar santri.</li>
+                    <li>Sistem mendeteksi kemiripan kata antar siswa.</li>
                     <li>Resume ini menyumbang 20% dari Nilai Akhir Modul.</li>
                   </ul>
                 </div>

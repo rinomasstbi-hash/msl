@@ -27,7 +27,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
         </div>
         <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-3">
           <div className="text-right">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Status Modul</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">Status UKBM</p>
             <p className="text-sm font-bold text-emerald-600">Terbuka (Pacing OK)</p>
           </div>
           <i className="fa-solid fa-circle-check text-emerald-500"></i>
@@ -43,7 +43,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
                   {modIdx + 1}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">Modul {modIdx + 1}: {mod.title}</h3>
+                  <h3 className="font-bold text-slate-800">UKBM {modIdx + 1}: {mod.title}</h3>
                   <div className="flex items-center space-x-4 mt-1">
                     <span className="text-xs text-slate-500 flex items-center">
                       <i className="fa-solid fa-calendar mr-1"></i> Tersedia sejak: {new Date(mod.availableAt).toLocaleDateString('id-ID')}
@@ -120,18 +120,37 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
                 
                 {/* Sumatif Node */}
                 <div className={`relative flex items-center p-6 pl-20 border-t border-slate-100 ${!mod.kbs.every(k => k.isCompleted) ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
-                  <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${mod.kbs.every(k => k.isCompleted) ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'}`}></div>
+                  <div className={`absolute left-8 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 ${
+                    mod.summativeSubmitted 
+                      ? 'bg-indigo-600'
+                      : mod.kbs.every(k => k.isCompleted) ? 'bg-indigo-600 animate-pulse' : 'bg-slate-300'
+                  }`}></div>
+                  
                   <div className="flex-1 flex justify-between items-center">
                     <div>
                       <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5">Evaluation</p>
-                      <h4 className="font-bold text-slate-800">Tes Sumatif Modul</h4>
+                      <h4 className="font-bold text-slate-800">Tes Sumatif UKBM</h4>
                     </div>
-                    <Link 
-                      to={`/test/sumatif/${course.id}/${mod.id}`}
-                      className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all"
-                    >
-                       Mulai Ujian
-                    </Link>
+                    
+                    {mod.summativeSubmitted ? (
+                        <div className="flex items-center space-x-4">
+                           <div className="text-right hidden sm:block">
+                               <span className="text-xs font-bold text-slate-400 uppercase block">Nilai Kamu</span>
+                               <span className="text-lg font-black text-indigo-700">{mod.summativeScore}/100</span>
+                           </div>
+                           <div className="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center space-x-2 border border-indigo-200">
+                                <i className="fa-solid fa-star"></i>
+                                <span>Selesai</span>
+                           </div>
+                        </div>
+                    ) : (
+                        <Link 
+                        to={`/test/sumatif/${course.id}/${mod.id}`}
+                        className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-all"
+                        >
+                        Mulai Ujian
+                        </Link>
+                    )}
                   </div>
                 </div>
               </div>

@@ -124,7 +124,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate }) => {
         <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full mb-4">
           <i className={`fa-solid ${isEditing ? 'fa-user-pen' : 'fa-user-shield'} text-4xl`}></i>
         </div>
-        <h1 className="text-2xl font-black text-slate-800">{isEditing ? 'Edit Profil Santri' : 'Verifikasi Profil Santri'}</h1>
+        <h1 className="text-2xl font-black text-slate-800">{isEditing ? 'Edit Profil Siswa' : 'Verifikasi Profil Siswa'}</h1>
         <p className="text-slate-500 mt-2">
           {isEditing ? 'Pastikan data yang Anda masukkan sudah benar.' : 'Sesuai aturan MTsN 4 Jombang, lengkapi data berikut sebelum memulai pembelajaran.'}
         </p>

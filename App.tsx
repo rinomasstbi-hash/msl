@@ -11,6 +11,7 @@ import ComingSoon from './pages/ComingSoon';
 import SummativeTest from './pages/SummativeTest';
 import DiagnosticTest from './pages/DiagnosticTest';
 import CoursesPage from './pages/CoursesPage';
+import GradesPage from './pages/GradesPage';
 import * as api from './services/api';
 import { User, Course } from './types';
 
@@ -46,6 +47,11 @@ const App: React.FC = () => {
     setCourses(updatedCourses);
   };
 
+  const handleSummativeScore = async (courseId: string, moduleId: string, score: number) => {
+    const updatedCourses = await api.updateSummativeScore(courseId, moduleId, score);
+    setCourses(updatedCourses);
+  };
+
   const handleProfileUpdate = async (updatedUser: User) => {
       const savedUser = await api.updateUser(updatedUser);
       setUser(savedUser);
@@ -68,12 +74,14 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
+        {/* Sidebar with mobile state */}
         <Sidebar 
           role={user.role} 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
         />
         
+        {/* Mobile Backdrop */}
         {isSidebarOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
@@ -93,13 +101,22 @@ const App: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Route path="/" element={<Dashboard user={user} />} />
+                  {/* Updated Dashboard Route to receive courses */}
+                  <Route path="/" element={<Dashboard user={user} courses={courses} />} />
                   <Route path="/courses" element={<CoursesPage courses={courses} />} />
                   <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
                   <Route path="/kb/:courseId/:kbId" element={<KBView courses={courses} onCompleteKB={handleCompleteKB} />} />
-                  <Route path="/test/sumatif/:courseId/:moduleId" element={<SummativeTest courses={courses} />} />
+                  
+                  <Route 
+                    path="/test/sumatif/:courseId/:moduleId" 
+                    element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} />} 
+                  />
+                  
                   <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
-                  <Route path="/grades" element={<ComingSoon title="Nilai & Statistik" icon="fa-chart-line" />} />
+                  
+                  {/* Updated Grades Route */}
+                  <Route path="/grades" element={<GradesPage courses={courses} />} />
+                  
                   <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
                   <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />
                   <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} />} />

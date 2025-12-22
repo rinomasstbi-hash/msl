@@ -19,14 +19,17 @@ export const MOCK_DIAGNOSTIC_QUESTIONS = [
       'Segitiga dengan dua sisi sama panjang.',
       'Segitiga yang semua sudutnya lancip.',
     ],
+    a: 1 // Correct answer index
   },
   {
     q: 'Pada segitiga siku-siku, sisi terpanjang yang berhadapan dengan sudut siku-siku disebut...',
     o: ['Garis tinggi', 'Garis bagi', 'Sisi miring (hipotenusa)', 'Sisi alas'],
+    a: 2
   },
   {
     q: 'Jika sebuah segitiga memiliki panjang sisi 3 cm, 4 cm, dan 5 cm, apakah segitiga tersebut siku-siku?',
     o: ['Ya, karena memenuhi teorema Pythagoras.', 'Tidak, karena sisinya terlalu pendek.', 'Mungkin, perlu diukur sudutnya.', 'Tidak, karena semua sisinya ganjil.'],
+    a: 0
   },
   {
     q: 'Apa bunyi dari Teorema Pythagoras?',
@@ -36,7 +39,36 @@ export const MOCK_DIAGNOSTIC_QUESTIONS = [
       'Kuadrat panjang sisi miring sama dengan jumlah kuadrat panjang kedua sisi penyikunya.',
       'Keliling segitiga adalah jumlah panjang ketiga sisinya.',
     ],
+    a: 2
   },
+];
+
+export const MOCK_SUMMATIVE_QUESTIONS = [
+  {
+    q: 'Sebuah segitiga siku-siku memiliki panjang sisi siku-siku 6 cm dan 8 cm. Berapakah panjang sisi miringnya?',
+    o: ['10 cm', '12 cm', '14 cm', '9 cm'],
+    a: 0 // (sqrt(36+64) = 10)
+  },
+  {
+    q: 'Diketahui sisi miring segitiga siku-siku adalah 13 cm dan salah satu sisi siku-sikunya 5 cm. Berapakah panjang sisi lainnya?',
+    o: ['10 cm', '11 cm', '12 cm', '8 cm'],
+    a: 2 // (sqrt(169-25) = 12)
+  },
+  {
+    q: 'Manakah kumpulan tiga bilangan berikut yang membentuk tripel Pythagoras?',
+    o: ['3, 4, 6', '5, 12, 13', '6, 8, 12', '7, 24, 26'],
+    a: 1
+  },
+  {
+    q: 'Sebuah tangga sepanjang 5 meter disandarkan pada tembok. Jarak kaki tangga ke tembok adalah 3 meter. Berapakah tinggi tembok yang dicapai tangga?',
+    o: ['3 meter', '4 meter', '5 meter', '6 meter'],
+    a: 1
+  },
+  {
+    q: 'Rumus Pythagoras c² = a² + b² berlaku jika...',
+    o: ['c adalah sisi miring', 'a adalah sisi miring', 'b adalah sisi miring', 'Sudutnya tumpul'],
+    a: 0
+  }
 ];
 
 export const MOCK_COURSES: Course[] = [
@@ -50,7 +82,9 @@ export const MOCK_COURSES: Course[] = [
         title: 'Teorema Pythagoras',
         subject: 'Matematika',
         order: 1,
-        diagnosticSubmitted: false, // Diagnostic must be completed first
+        diagnosticSubmitted: false,
+        summativeSubmitted: false, 
+        summativeScore: 0,
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
@@ -59,7 +93,7 @@ export const MOCK_COURSES: Course[] = [
             order: 1,
             content: 'Pythagoras adalah matematikawan Yunani...',
             estimatedTime: 120,
-            isCompleted: false // Reset to false for testing completion logic
+            isCompleted: false
           },
           {
             id: 'kb-1-2',
@@ -67,7 +101,35 @@ export const MOCK_COURSES: Course[] = [
             order: 2,
             content: 'Rumus c^2 = a^2 + b^2 digunakan untuk...',
             estimatedTime: 180,
-            isCompleted: false // Reset to false for testing completion logic
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'mod-2',
+        title: 'Lingkaran',
+        subject: 'Matematika',
+        order: 2,
+        diagnosticSubmitted: false,
+        summativeSubmitted: false, 
+        summativeScore: 0,
+        availableAt: '2023-10-15T00:00:00Z',
+        kbs: [
+          {
+            id: 'kb-2-1',
+            title: 'Unsur-unsur Lingkaran',
+            order: 1,
+            content: 'Mengenal titik pusat, jari-jari, diameter, busur, tali busur...',
+            estimatedTime: 150,
+            isCompleted: false
+          },
+          {
+            id: 'kb-2-2',
+            title: 'Keliling dan Luas Lingkaran',
+            order: 2,
+            content: 'Memahami nilai Pi dan rumus keliling (2.pi.r) serta luas (pi.r^2)...',
+            estimatedTime: 200,
+            isCompleted: false
           }
         ]
       }
