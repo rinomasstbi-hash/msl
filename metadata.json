@@ -1,0 +1,7 @@
+{
+  "name": "Madrasah Smart Learning (MSL) - MTsN 4 Jombang",
+  "description": "High-discipline LMS with Linear Learning Path, Anti-Paste Resumes, and Weighted Grading.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
