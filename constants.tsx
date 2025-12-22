@@ -6,7 +6,7 @@ export const MOCK_USER: User = {
   id: 'std-001',
   name: 'Ahmad Fauzi',
   role: UserRole.STUDENT,
-  profileComplete: false,
+  profileComplete: true, // Profile is now complete by default for review
   email: 'fauzi@mtsn4jombang.sch.id',
   avatar: 'https://picsum.photos/200'
 };
@@ -22,7 +22,7 @@ export const MOCK_COURSES: Course[] = [
         title: 'Teorema Pythagoras',
         subject: 'Matematika',
         order: 1,
-        diagnosticSubmitted: false,
+        diagnosticSubmitted: true, // Diagnostic is now submitted
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
@@ -31,7 +31,7 @@ export const MOCK_COURSES: Course[] = [
             order: 1,
             content: 'Pythagoras adalah matematikawan Yunani...',
             estimatedTime: 120,
-            isCompleted: false
+            isCompleted: true // KB is now completed
           },
           {
             id: 'kb-1-2',
@@ -39,7 +39,7 @@ export const MOCK_COURSES: Course[] = [
             order: 2,
             content: 'Rumus c^2 = a^2 + b^2 digunakan untuk...',
             estimatedTime: 180,
-            isCompleted: false
+            isCompleted: true // KB is now completed
           }
         ]
       }

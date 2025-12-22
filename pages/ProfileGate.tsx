@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { User } from '../types';
 
 interface ProfileGateProps {
@@ -8,6 +9,7 @@ interface ProfileGateProps {
 }
 
 const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nisn: '',
     address: '',
@@ -22,6 +24,8 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
     e.preventDefault();
     if (isFormValid) {
       onComplete();
+      // Navigate to dashboard on successful completion
+      navigate('/');
     }
   };
 
@@ -121,6 +125,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
         </div>
 
         <button 
+          type="submit"
           disabled={!isFormValid}
           className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center space-x-2 ${
             isFormValid ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
