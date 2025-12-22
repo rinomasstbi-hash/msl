@@ -10,6 +10,7 @@ import ProfileGate from './pages/ProfileGate';
 import ComingSoon from './pages/ComingSoon';
 import SummativeTest from './pages/SummativeTest';
 import DiagnosticTest from './pages/DiagnosticTest';
+import CoursesPage from './pages/CoursesPage';
 import { MOCK_USER, MOCK_COURSES } from './constants';
 import { User, Course } from './types';
 
@@ -94,8 +95,8 @@ const App: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <Route path="/" element={<Dashboard user={user} courses={courses} />} />
-                  <Route path="/courses" element={<Dashboard user={user} courses={courses} />} />
+                  <Route path="/" element={<Dashboard user={user} />} />
+                  <Route path="/courses" element={<CoursesPage courses={courses} />} />
                   <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
                   <Route path="/kb/:courseId/:kbId" element={<KBView courses={courses} onCompleteKB={handleCompleteKB} />} />
                   <Route path="/test/sumatif/:courseId/:moduleId" element={<SummativeTest courses={courses} />} />

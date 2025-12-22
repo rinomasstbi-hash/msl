@@ -1,16 +1,24 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, Course } from '../types';
+import { User } from '../types';
 
 interface DashboardProps {
   user: User;
-  courses: Course[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h1 className="text-2xl font-bold text-slate-800">Selamat Datang, {user.name}!</h1>
+        <p className="text-slate-500 mt-1">Siap untuk melanjutkan pembelajaran hari ini?</p>
+        <Link to="/courses" className="mt-4 inline-block px-5 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-emerald-700 transition-all">
+          <i className="fa-solid fa-arrow-right mr-2"></i>
+          Lihat Mata Pelajaran
+        </Link>
+      </div>
+
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 p-6 rounded-2xl text-white shadow-xl">
           <div className="flex justify-between items-start mb-4">
@@ -39,44 +47,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
           <p className="text-sm text-slate-500 mt-1">Waktu Belajar Minggu Ini</p>
         </div>
       </section>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-800">Daftar Mata Pelajaran (Fase D)</h3>
-          <button className="text-emerald-600 text-sm font-semibold hover:underline">Lihat Semua</button>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-          {courses.map(course => (
-            <Link 
-              key={course.id} 
-              to={`/course/${course.id}`}
-              className="group block p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:shadow-lg hover:-translate-y-1 transition-all"
-            >
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 mb-4 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                <i className="fa-solid fa-flask-vial text-xl"></i>
-              </div>
-              <h4 className="font-bold text-slate-800 mb-1 group-hover:text-emerald-700">{course.name}</h4>
-              <p className="text-xs text-slate-500 mb-4">Ust. Muhammad Ali, M.Pd</p>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px] font-bold uppercase text-slate-400">
-                  <span>Progress Belajar</span>
-                  <span>1 / {course.modules.length} Bab</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-1/3 rounded-full transition-all duration-1000"></div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                 <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold">LINEAR PATH</span>
-                 <i className="fa-solid fa-arrow-right text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };

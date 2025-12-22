@@ -10,27 +10,50 @@ interface ProfileGateProps {
 
 const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Pre-populate form for editing, or start empty for initial completion
+  const initialFormData = user.profileComplete ? {
+    nisn: '0071234567',
+    address: 'Jombang, Jawa Timur',
+    parentName: 'Santoso',
+    phone: '081234567890',
+    agreed: true
+  } : {
     nisn: '',
     address: '',
     parentName: '',
     phone: '',
     agreed: false
-  });
+  };
+  
+  const [formData, setFormData] = useState(initialFormData);
 
   const isFormValid = formData.nisn && formData.address && formData.parentName && formData.phone && formData.agreed;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid) {
-      onComplete();
-      // Navigate to dashboard on successful completion
-      navigate('/');
+      if (!user.profileComplete) {
+        // First time completion
+        onComplete();
+        navigate('/');
+      } else {
+        // Editing existing profile
+        alert("Profil berhasil diperbarui!");
+        setIsEditing(false);
+        // In a real app, you would dispatch an update action here
+      }
     }
   };
+  
+  const handleCancelEdit = () => {
+    setFormData(initialFormData); // Reset changes
+    setIsEditing(false);
+  };
 
-  // If profile is already complete, show the profile view page instead of the form
-  if (user.profileComplete) {
+  // If profile is complete AND we are not in editing mode, show the profile view page
+  if (user.profileComplete && !isEditing) {
     return (
       <div className="max-w-2xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
         <div className="text-center">
@@ -51,19 +74,19 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">NISN</label>
-              <p className="text-slate-700 font-semibold mt-1">0071234567 (Verified)</p>
+              <p className="text-slate-700 font-semibold mt-1">{formData.nisn} (Verified)</p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nama Wali</label>
-              <p className="text-slate-700 font-semibold mt-1">Santoso</p>
+              <p className="text-slate-700 font-semibold mt-1">{formData.parentName}</p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">No. HP Wali</label>
-              <p className="text-slate-700 font-semibold mt-1">081234567890</p>
+              <p className="text-slate-700 font-semibold mt-1">{formData.phone}</p>
             </div>
              <div>
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Alamat</label>
-              <p className="text-slate-700 font-semibold mt-1">Jombang, Jawa Timur</p>
+              <p className="text-slate-700 font-semibold mt-1">{formData.address}</p>
             </div>
           </div>
 
@@ -77,11 +100,13 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
 
           <div className="flex items-center space-x-4 pt-6 border-t border-slate-100">
              <button
+              onClick={() => alert('Fitur ubah password akan segera tersedia!')}
               className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
             >
               Ubah Password
             </button>
             <button
+              onClick={() => setIsEditing(true)}
               className="w-full py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-lg"
             >
               Edit Profil
@@ -92,26 +117,30 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
     );
   }
 
-  // Render the Profile Completion Form if profile is not complete
+  // Render the Profile Completion/Editing Form
   return (
     <div className="max-w-2xl mx-auto space-y-8 py-8">
       <div className="text-center">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full mb-4">
-          <i className="fa-solid fa-user-shield text-4xl"></i>
+          <i className={`fa-solid ${isEditing ? 'fa-user-pen' : 'fa-user-shield'} text-4xl`}></i>
         </div>
-        <h1 className="text-2xl font-black text-slate-800">Verifikasi Profil Santri</h1>
-        <p className="text-slate-500 mt-2">Sesuai aturan MTsN 4 Jombang, lengkapi data berikut sebelum memulai pembelajaran.</p>
+        <h1 className="text-2xl font-black text-slate-800">{isEditing ? 'Edit Profil Santri' : 'Verifikasi Profil Santri'}</h1>
+        <p className="text-slate-500 mt-2">
+          {isEditing ? 'Pastikan data yang Anda masukkan sudah benar.' : 'Sesuai aturan MTsN 4 Jombang, lengkapi data berikut sebelum memulai pembelajaran.'}
+        </p>
       </div>
 
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
-        <div className="flex items-start">
-          <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-1 mr-3"></i>
-          <div>
-            <h4 className="font-bold text-amber-800">Peringatan Profil Terkunci</h4>
-            <p className="text-sm text-amber-700">Menu pembelajaran tidak akan muncul sampai data NISN dan Pakta Integritas divalidasi oleh sistem.</p>
+      {!isEditing && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
+          <div className="flex items-start">
+            <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-1 mr-3"></i>
+            <div>
+              <h4 className="font-bold text-amber-800">Peringatan Profil Terkunci</h4>
+              <p className="text-sm text-amber-700">Menu pembelajaran tidak akan muncul sampai data NISN dan Pakta Integritas divalidasi oleh sistem.</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -188,16 +217,27 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
            </label>
         </div>
 
-        <button 
-          type="submit"
-          disabled={!isFormValid}
-          className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center space-x-2 ${
-            isFormValid ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-          }`}
-        >
-          <span>Buka Akses Pembelajaran</span>
-          <i className="fa-solid fa-unlock-keyhole"></i>
-        </button>
+        <div className="flex items-center space-x-4">
+          {isEditing && (
+             <button
+              type="button"
+              onClick={handleCancelEdit}
+              className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              Batal
+            </button>
+          )}
+          <button 
+            type="submit"
+            disabled={!isFormValid}
+            className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-lg flex items-center justify-center space-x-2 ${
+              isFormValid ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <span>{isEditing ? 'Simpan Perubahan' : 'Buka Akses Pembelajaran'}</span>
+            <i className={`fa-solid ${isEditing ? 'fa-floppy-disk' : 'fa-unlock-keyhole'}`}></i>
+          </button>
+        </div>
       </form>
     </div>
   );
