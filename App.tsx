@@ -9,6 +9,7 @@ import KBView from './pages/KBView';
 import ProfileGate from './pages/ProfileGate';
 import ComingSoon from './pages/ComingSoon';
 import SummativeTest from './pages/SummativeTest';
+import DiagnosticTest from './pages/DiagnosticTest';
 import { MOCK_USER, MOCK_COURSES } from './constants';
 import { User, Course } from './types';
 
@@ -37,6 +38,25 @@ const App: React.FC = () => {
                 return kb;
               }),
             })),
+          };
+        }
+        return course;
+      })
+    );
+  };
+
+  const handleDiagnosticComplete = (courseId: string, moduleId: string) => {
+    setCourses(prevCourses =>
+      prevCourses.map(course => {
+        if (course.id === courseId) {
+          return {
+            ...course,
+            modules: course.modules.map(module => {
+              if (module.id === moduleId) {
+                return { ...module, diagnosticSubmitted: true };
+              }
+              return module;
+            }),
           };
         }
         return course;
@@ -79,6 +99,7 @@ const App: React.FC = () => {
                   <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
                   <Route path="/kb/:courseId/:kbId" element={<KBView courses={courses} onCompleteKB={handleCompleteKB} />} />
                   <Route path="/test/sumatif/:courseId/:moduleId" element={<SummativeTest courses={courses} />} />
+                  <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
                   <Route path="/grades" element={<ComingSoon title="Nilai & Statistik" icon="fa-chart-line" />} />
                   <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
                   <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />

@@ -56,10 +56,13 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
               </div>
               
               {!mod.diagnosticSubmitted ? (
-                <button className="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition-colors flex items-center space-x-2">
+                <Link 
+                  to={`/test/diagnostik/${course.id}/${mod.id}`}
+                  className="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition-colors flex items-center space-x-2 animate-pulse"
+                >
                   <i className="fa-solid fa-clipboard-question"></i>
                   <span>Mulai Asesmen Diagnostik</span>
-                </button>
+                </Link>
               ) : (
                 <div className="text-emerald-600 flex items-center space-x-2 font-bold text-sm">
                    <i className="fa-solid fa-circle-check"></i>

@@ -22,7 +22,7 @@ export const MOCK_COURSES: Course[] = [
         title: 'Teorema Pythagoras',
         subject: 'Matematika',
         order: 1,
-        diagnosticSubmitted: true, // Diagnostic is submitted to unlock first KB
+        diagnosticSubmitted: false, // Diagnostic must be completed first
         availableAt: '2023-10-01T00:00:00Z',
         kbs: [
           {
