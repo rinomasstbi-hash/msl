@@ -11,6 +11,35 @@ export const MOCK_USER: User = {
   avatar: 'https://picsum.photos/200'
 };
 
+export const MOCK_DIAGNOSTIC_QUESTIONS = [
+  {
+    q: 'Manakah di antara berikut ini yang merupakan definisi dari segitiga siku-siku?',
+    o: [
+      'Segitiga dengan tiga sisi sama panjang.',
+      'Segitiga dengan salah satu sudutnya 90 derajat.',
+      'Segitiga dengan dua sisi sama panjang.',
+      'Segitiga yang semua sudutnya lancip.',
+    ],
+  },
+  {
+    q: 'Pada segitiga siku-siku, sisi terpanjang yang berhadapan dengan sudut siku-siku disebut...',
+    o: ['Garis tinggi', 'Garis bagi', 'Sisi miring (hipotenusa)', 'Sisi alas'],
+  },
+  {
+    q: 'Jika sebuah segitiga memiliki panjang sisi 3 cm, 4 cm, dan 5 cm, apakah segitiga tersebut siku-siku?',
+    o: ['Ya, karena memenuhi teorema Pythagoras.', 'Tidak, karena sisinya terlalu pendek.', 'Mungkin, perlu diukur sudutnya.', 'Tidak, karena semua sisinya ganjil.'],
+  },
+  {
+    q: 'Apa bunyi dari Teorema Pythagoras?',
+    o: [
+      'Jumlah kuadrat sisi-sisi yang sama panjang adalah sama dengan kuadrat sisi miring.',
+      'Luas segitiga adalah setengah alas kali tinggi.',
+      'Kuadrat panjang sisi miring sama dengan jumlah kuadrat panjang kedua sisi penyikunya.',
+      'Keliling segitiga adalah jumlah panjang ketiga sisinya.',
+    ],
+  },
+];
+
 export const MOCK_COURSES: Course[] = [
   {
     id: 'course-math',

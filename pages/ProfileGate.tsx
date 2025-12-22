@@ -29,6 +29,70 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onComplete }) => {
     }
   };
 
+  // If profile is already complete, show the profile view page instead of the form
+  if (user.profileComplete) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8 py-8 animate-in fade-in duration-500">
+        <div className="text-center">
+          <div className="relative inline-block mb-4">
+            <img src={user.avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg" />
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center text-white border-2 border-white">
+              <i className="fa-solid fa-check"></i>
+            </div>
+          </div>
+          <h1 className="text-2xl font-black text-slate-800">{user.name}</h1>
+          <p className="text-slate-500 mt-1">{user.email}</p>
+          <span className="mt-2 inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full uppercase">{user.role}</span>
+        </div>
+        
+        <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-6">
+          <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-4">Informasi Profil</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">NISN</label>
+              <p className="text-slate-700 font-semibold mt-1">0071234567 (Verified)</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nama Wali</label>
+              <p className="text-slate-700 font-semibold mt-1">Santoso</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">No. HP Wali</label>
+              <p className="text-slate-700 font-semibold mt-1">081234567890</p>
+            </div>
+             <div>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Alamat</label>
+              <p className="text-slate-700 font-semibold mt-1">Jombang, Jawa Timur</p>
+            </div>
+          </div>
+
+          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex items-start space-x-3">
+            <i className="fa-solid fa-file-signature text-emerald-600 mt-1"></i>
+            <div>
+              <h4 className="font-bold text-emerald-800">Pakta Integritas</h4>
+              <p className="text-sm text-emerald-700">Anda telah menyetujui pakta integritas belajar.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4 pt-6 border-t border-slate-100">
+             <button
+              className="w-full py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
+            >
+              Ubah Password
+            </button>
+            <button
+              className="w-full py-3 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-lg"
+            >
+              Edit Profil
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render the Profile Completion Form if profile is not complete
   return (
     <div className="max-w-2xl mx-auto space-y-8 py-8">
       <div className="text-center">

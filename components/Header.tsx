@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { User } from '../types';
 
 interface HeaderProps {
@@ -35,15 +36,15 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick }) => {
 
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-        <div className="flex items-center space-x-3">
+        <Link to="/profile" className="flex items-center space-x-3 group cursor-pointer">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-800 leading-none">{user.name}</p>
+            <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-emerald-700 transition-colors">{user.name}</p>
             <p className="text-[10px] text-emerald-600 font-black uppercase mt-1">{user.role}</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden shadow-md">
+          <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden shadow-md group-hover:ring-2 group-hover:ring-emerald-400 transition-all">
             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );
