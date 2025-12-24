@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -17,11 +17,15 @@ import LoginPage from './pages/LoginPage';
 import * as api from './services/api';
 import { User, Course } from './types';
 
-const App: React.FC = () => {
+// Main Content Component that uses Router Hooks
+const AppContent: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Hooks
+  const location = useLocation();
   
   // State for Semester Dropdown
   const [selectedSemester, setSelectedSemester] = useState<string>('');
@@ -124,44 +128,52 @@ const App: React.FC = () => {
   // Logic: Check if the selected semester matches the user's active semester
   const isActiveSemester = user.semester === selectedSemester;
   
-  // LOGIC UPDATE: View hanya dikunci jika user adalah STUDENT dan semester tidak sesuai.
-  // Role lain (Admin, Guru, Supervisor) bebas melihat semester lain tanpa dikunci.
+  // Logic: View Lock
   const isViewLocked = user.role === 'STUDENT' && !isActiveSemester;
-
   const isProfileLocked = !user.profileComplete;
 
+  // --- KIOSK MODE CHECK (EXAM MODE) ---
+  // If current URL contains /test/sumatif, hide Sidebar and Header
+  const isExamMode = location.pathname.includes('/test/sumatif');
+
   return (
-    <HashRouter>
       <div className="flex min-h-screen bg-slate-50 text-slate-900 overflow-hidden">
-        {/* Sidebar with mobile state - Grayed out only if view is locked */}
-        <Sidebar 
-          role={user.role} 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          disabled={isViewLocked}
-        />
-        
-        {/* Mobile Backdrop */}
-        {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
-            onClick={() => setIsSidebarOpen(false)}
-          ></div>
+        {/* Sidebar - HIDDEN IN EXAM MODE */}
+        {!isExamMode && (
+          <>
+            <Sidebar 
+              role={user.role} 
+              isOpen={isSidebarOpen} 
+              onClose={() => setIsSidebarOpen(false)} 
+              disabled={isViewLocked}
+            />
+            
+            {/* Mobile Backdrop */}
+            {isSidebarOpen && (
+              <div 
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+                onClick={() => setIsSidebarOpen(false)}
+              ></div>
+            )}
+          </>
         )}
 
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-          {/* Header remains active to allow changing semester back */}
-          <Header 
-            user={user} 
-            onMenuClick={toggleSidebar} 
-            selectedSemester={selectedSemester}
-            onSemesterChange={setSelectedSemester}
-            onLogout={handleLogout}
-          />
+          {/* Header - HIDDEN IN EXAM MODE */}
+          {!isExamMode && (
+            <Header 
+              user={user} 
+              onMenuClick={toggleSidebar} 
+              selectedSemester={selectedSemester}
+              onSemesterChange={setSelectedSemester}
+              onLogout={handleLogout}
+            />
+          )}
           
-          {/* Main content area - Applies gray effect if view is locked */}
-          <main className={`flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar transition-all duration-300 ${isViewLocked ? 'grayscale opacity-40 pointer-events-none select-none' : ''}`}>
-            {isViewLocked && (
+          {/* Main content area */}
+          <main className={`flex-1 overflow-y-auto custom-scrollbar transition-all duration-300 relative ${isViewLocked ? 'grayscale opacity-40 pointer-events-none select-none' : ''} ${isExamMode ? 'p-0 bg-white' : 'p-4 md:p-8'}`}>
+            
+            {isViewLocked && !isExamMode && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <div className="bg-white/90 p-6 rounded-2xl shadow-2xl text-center border-2 border-slate-200">
                         <i className="fa-solid fa-lock text-4xl text-slate-400 mb-4"></i>
@@ -232,6 +244,14 @@ const App: React.FC = () => {
           </main>
         </div>
       </div>
+  );
+};
+
+// Top Level Wrapper to provide Router Context
+const App: React.FC = () => {
+  return (
+    <HashRouter>
+      <AppContent />
     </HashRouter>
   );
 };

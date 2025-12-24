@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Course, KKTP } from '../types';
 import { MOCK_SUMMATIVE_QUESTIONS } from '../services/seedData';
@@ -10,18 +10,38 @@ interface SummativeTestProps {
   onStartRemedial: (courseId: string, moduleId: string) => void;
 }
 
+// Tipe untuk Soal yang sudah diacak
+interface ShuffledQuestion {
+    originalIndex: number;
+    q: string;
+    o: string[];
+    a: number; // Index jawaban benar yang baru setelah diacak
+}
+
+const MAX_VIOLATIONS = 3;
+
 const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummative, onStartRemedial }) => {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const navigate = useNavigate();
+  const testContainerRef = useRef<HTMLDivElement>(null);
   
   const course = courses.find(c => c.id === courseId);
   const module = course?.modules.find(m => m.id === moduleId);
 
   const [testStarted, setTestStarted] = useState(false);
+  
+  // State untuk Soal yang sudah diacak
+  const [questions, setQuestions] = useState<ShuffledQuestion[]>([]);
+  
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>(Array(MOCK_SUMMATIVE_QUESTIONS.length).fill(-1));
+  const [answers, setAnswers] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Security States
+  const [violationCount, setViolationCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [securityMessage, setSecurityMessage] = useState<string | null>(null);
 
   if (!course || !module) {
     return <div>Ujian tidak ditemukan.</div>;
@@ -31,24 +51,161 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   const MAX_REMEDIAL_ATTEMPTS = 2;
   const currentRemedialCount = module.remedialAttemptCount || 0;
 
+  // --- RANDOMIZATION ENGINE ---
+  const initializeTest = () => {
+      // 1. Deep Copy Questions
+      const rawQuestions = JSON.parse(JSON.stringify(MOCK_SUMMATIVE_QUESTIONS));
+      
+      // 2. Shuffle Options within each question & Adjust Correct Answer Index
+      const processedQuestions = rawQuestions.map((q: any, idx: number) => {
+          const correctOptionText = q.o[q.a]; // Simpan teks jawaban benar
+          
+          // Fisher-Yates Shuffle for Options
+          for (let i = q.o.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [q.o[i], q.o[j]] = [q.o[j], q.o[i]];
+          }
+
+          // Find new index of the correct answer
+          const newCorrectIndex = q.o.indexOf(correctOptionText);
+          
+          return {
+              originalIndex: idx,
+              q: q.q,
+              o: q.o,
+              a: newCorrectIndex
+          };
+      });
+
+      // 3. Shuffle the Questions Order
+      for (let i = processedQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [processedQuestions[i], processedQuestions[j]] = [processedQuestions[j], processedQuestions[i]];
+      }
+
+      setQuestions(processedQuestions);
+      setAnswers(Array(processedQuestions.length).fill(-1));
+      setTestStarted(true);
+      setViolationCount(0);
+      enterFullscreen();
+  };
+
   const handleStartRemedial = () => {
       if (courseId && moduleId) {
           if (currentRemedialCount >= MAX_REMEDIAL_ATTEMPTS) {
-              return; // Guard clause
+              return;
           }
           setIsSubmitting(false); 
           onStartRemedial(courseId, moduleId);
-          // Reset local state for immediate feedback
-          setTestStarted(true);
-          setAnswers(Array(MOCK_SUMMATIVE_QUESTIONS.length).fill(-1));
+          // Re-init randomization
+          initializeTest();
           setCurrentQuestionIndex(0);
       }
   }
 
-  // VIEW: RESULT SCREEN (Jika sudah submit)
+  // --- SECURITY LOGIC ---
+  const enterFullscreen = () => {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+          elem.requestFullscreen().catch((err) => console.log(err));
+      }
+      setIsFullscreen(true);
+  };
+
+  const handleViolation = useCallback((reason: string) => {
+      if (isSubmitting || module.summativeSubmitted) return;
+
+      setViolationCount(prev => {
+          const newCount = prev + 1;
+          setSecurityMessage(`PELANGGARAN TERDETEKSI (${newCount}/${MAX_VIOLATIONS}): ${reason}`);
+          
+          // Auto close warning after 3s
+          setTimeout(() => setSecurityMessage(null), 4000);
+
+          if (newCount >= MAX_VIOLATIONS) {
+              alert("ANDA TERDISKUALIFIKASI. Sistem mendeteksi kecurangan berulang. Ujian akan dikirim otomatis dengan nilai saat ini.");
+              forceSubmit();
+          }
+          return newCount;
+      });
+  }, [isSubmitting, module.summativeSubmitted]);
+
+  const forceSubmit = () => {
+      // Wrapper to call submit logic directly
+      handleSubmitLogic(true); 
+  };
+
+  // Event Listeners for Security
+  useEffect(() => {
+      if (!testStarted || module.summativeSubmitted) return;
+
+      const handleVisibilityChange = () => {
+          if (document.hidden) {
+              handleViolation("Meninggalkan Halaman Ujian (Tab Switch)");
+          }
+      };
+
+      const handleBlur = () => {
+          handleViolation("Kehilangan Fokus Jendela (Membuka Aplikasi Lain)");
+      };
+
+      const handleFullscreenChange = () => {
+          if (!document.fullscreenElement) {
+              handleViolation("Keluar dari Mode Fullscreen");
+              setIsFullscreen(false);
+          } else {
+              setIsFullscreen(true);
+          }
+      };
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+          // Block Inspeksi & Reload
+          if (
+              e.key === 'F12' || 
+              (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+              (e.ctrlKey && e.key === 'u') ||
+              e.key === 'F5' ||
+              (e.ctrlKey && e.key === 'r')
+          ) {
+              e.preventDefault();
+              handleViolation("Percobaan Inspeksi/Reload Halaman");
+          }
+
+          // Block Copy Paste
+          if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'x')) {
+              e.preventDefault();
+              handleViolation("Percobaan Copy-Paste (Clipboard diblokir)");
+          }
+
+          // Block Alt+Tab attempt (Blur will catch it, but we try key too)
+          if (e.altKey && e.key === 'Tab') {
+               e.preventDefault();
+          }
+      };
+
+      const handleContextMenu = (e: MouseEvent) => {
+          e.preventDefault();
+      };
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("blur", handleBlur);
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("contextmenu", handleContextMenu);
+
+      return () => {
+          document.removeEventListener("visibilitychange", handleVisibilityChange);
+          window.removeEventListener("blur", handleBlur);
+          document.removeEventListener("fullscreenchange", handleFullscreenChange);
+          document.removeEventListener("keydown", handleKeyDown);
+          document.removeEventListener("contextmenu", handleContextMenu);
+      };
+  }, [testStarted, handleViolation, module.summativeSubmitted]);
+
+
+  // VIEW: RESULT SCREEN
   if (module.summativeSubmitted) {
      const isBelowKKTP = module.summativeScore < KKTP;
-     // Cek apakah masih punya sisa kesempatan (count < 2)
      const canRetake = currentRemedialCount < MAX_REMEDIAL_ATTEMPTS;
 
      return (
@@ -69,7 +226,6 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
              {isBelowKKTP ? (
                  <div className="space-y-4">
-                     {/* Info Percobaan Remedial */}
                      {currentRemedialCount > 0 && (
                         <div className="inline-block px-4 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold mb-2">
                             Remedial ke-{currentRemedialCount} dari {MAX_REMEDIAL_ATTEMPTS}
@@ -79,7 +235,6 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                      {canRetake ? (
                          <div className="animate-in slide-in-from-bottom-2">
                              <p className="text-red-700 font-medium mb-1">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).</p>
-                             <p className="text-xs text-slate-500 mb-4">Catatan: Nilai Remedial maksimal {KKTP}. Sistem akan mengambil nilai terbaik.</p>
                              <button 
                                 onClick={handleStartRemedial}
                                 className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
@@ -89,13 +244,9 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                          </div>
                      ) : (
                          <div className="bg-white/60 p-6 rounded-xl border border-red-100 animate-in zoom-in-95">
-                            <div className="w-12 h-12 bg-slate-200 text-slate-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <i className="fa-solid fa-ban text-xl"></i>
-                            </div>
                             <h3 className="text-slate-800 font-bold mb-2">Kesempatan Remedial Habis</h3>
                             <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
-                                Anda telah menggunakan seluruh kesempatan remedial ({MAX_REMEDIAL_ATTEMPTS}x). 
-                                Sistem telah menyimpan <strong>nilai tertinggi</strong> dari seluruh percobaan Anda sebagai nilai akhir.
+                                Anda telah menggunakan seluruh kesempatan remedial. Sistem menyimpan nilai tertinggi.
                             </p>
                             <Link 
                                 to={`/course/${courseId}`}
@@ -126,7 +277,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex < MOCK_SUMMATIVE_QUESTIONS.length - 1) {
+    if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
@@ -141,85 +292,81 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
       setShowConfirmModal(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleSubmitLogic = (isForced: boolean = false) => {
     setShowConfirmModal(false);
     setIsSubmitting(true);
     
-    // Calculate Score
+    // Calculate Score based on SHUFFLED questions and answers
     let correctCount = 0;
     answers.forEach((ans, idx) => {
-        if (ans === MOCK_SUMMATIVE_QUESTIONS[idx].a) {
+        // Bandingkan jawaban user (index opsi) dengan index jawaban benar di object soal yg sudah diacak
+        if (ans === questions[idx].a) {
             correctCount++;
         }
     });
     
-    const finalScore = Math.round((correctCount / MOCK_SUMMATIVE_QUESTIONS.length) * 100);
-    // Logic: If the module was already flagged as remedial (via startRemedial), this attempt is remedial.
+    const finalScore = Math.round((correctCount / questions.length) * 100);
     const isRemedialAttempt = !!module.isRemedial; 
 
-    // Gunakan setTimeout hanya untuk efek delay visual
+    // Exit fullscreen
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => console.log(err));
+    }
+
     setTimeout(async () => {
         if (courseId && moduleId) {
             await onCompleteSummative(courseId, moduleId, finalScore, isRemedialAttempt);
-            
-            // PENTING: Jangan set setIsSubmitting(false) di sini.
-            // Biarkan loading spinner tetap berputar sampai parent component (App)
-            // memperbarui data 'courses'. 
-            // Setelah data terupdate, 'module.summativeSubmitted' akan menjadi true
-            // dan React akan otomatis me-render VIEW RESULT SCREEN di atas,
-            // sehingga VIEW QUESTION INTERFACE (yang memuat spinner) akan hilang.
+            if (isForced) {
+                // Additional logic if needed for forced submit logging
+            }
         }
     }, 1500);
   };
 
-  const currentQuestion = MOCK_SUMMATIVE_QUESTIONS[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / MOCK_SUMMATIVE_QUESTIONS.length) * 100;
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
   const isAllAnswered = !answers.includes(-1);
 
   // VIEW: START SCREEN
   if (!testStarted) {
     return (
-      <div className="max-w-3xl mx-auto text-center py-10 animate-in fade-in duration-500">
+      <div className="max-w-3xl mx-auto text-center py-10 animate-in fade-in duration-500 select-none">
         <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200">
           <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full mx-auto flex items-center justify-center mb-6 border-4 border-indigo-100">
-            <i className="fa-solid fa-file-pen text-4xl"></i>
+            <i className="fa-solid fa-shield-halved text-4xl"></i>
           </div>
           
-          <h1 className="text-2xl font-black text-slate-800">{module.isRemedial ? 'Remedial Sumatif' : 'Tes Sumatif UKBM'}</h1>
+          <h1 className="text-2xl font-black text-slate-800">Secure Exam Browser</h1>
           <p className="text-lg font-semibold text-emerald-700 mt-1">{module.title}</p>
-          <p className="text-sm text-slate-500 mt-2">Mata Pelajaran: {course.name}</p>
-
-          <div className="bg-blue-50 border border-blue-200 p-6 rounded-xl mt-8 text-left space-y-4">
-            <h4 className="font-bold text-blue-800 text-center">
-              <i className="fa-solid fa-circle-info mr-2"></i>
-              Peraturan Ujian {module.isRemedial && '(Mode Remedial)'}
+          
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-xl mt-8 text-left space-y-4 shadow-sm">
+            <h4 className="font-bold text-red-800 flex items-center">
+              <i className="fa-solid fa-lock mr-2"></i>
+              Mode Keamanan Tinggi Diaktifkan
             </h4>
-            <ul className="text-sm text-blue-700 list-decimal list-inside space-y-2">
-              <li>Waktu pengerjaan ujian estimasi <strong>15 Menit</strong>.</li>
-              <li>Ujian terdiri dari {MOCK_SUMMATIVE_QUESTIONS.length} Soal Pilihan Ganda.</li>
-              <li>Minimal nilai ketuntasan (KKTP) adalah <strong>{KKTP}</strong>.</li>
-              {module.isRemedial && (
-                  <>
-                    <li className="font-bold">Nilai maksimal Remedial adalah {KKTP}.</li>
-                    <li>Kesempatan Remedial maksimal <strong>2 kali</strong>.</li>
-                  </>
-              )}
-              <li>Dilarang membuka tab baru atau window lain selama ujian berlangsung.</li>
+            <ul className="text-sm text-red-700 list-disc list-inside space-y-2">
+              <li>Layar akan dipaksa <strong>Fullscreen (Kiosk Mode)</strong>.</li>
+              <li>Dilarang <strong>Pindah Tab</strong> atau membuka aplikasi lain.</li>
+              <li>Dilarang menggunakan tombol <strong>Copy, Paste, PrintScreen</strong>.</li>
+              <li>Klik kanan dan tombol navigasi browser dimatikan.</li>
+              <li>Sistem akan mendeteksi pelanggaran. <strong>3x Pelanggaran = Auto Submit.</strong></li>
+              <li>Soal dan Opsi jawaban diacak secara otomatis oleh sistem.</li>
             </ul>
           </div>
 
           <div className="mt-8 space-y-4">
             <button 
-              onClick={() => setTestStarted(true)}
-              className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 transition-all"
+              onClick={initializeTest}
+              className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2"
             >
-              {module.isRemedial ? 'Mulai Mengerjakan' : 'Mulai Ujian Sekarang'}
+              <i className="fa-solid fa-play"></i>
+              <span>{module.isRemedial ? 'Mulai Remedial (Secure)' : 'Mulai Ujian (Secure)'}</span>
             </button>
             <Link 
               to={`/course/${courseId}`}
               className="inline-block text-slate-500 font-semibold text-sm hover:text-emerald-700 transition-colors"
             >
-              Kembali ke Detail UKBM
+              Batalkan
             </Link>
           </div>
         </div>
@@ -229,12 +376,36 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
   // VIEW: QUESTION INTERFACE
   return (
-     <div className="max-w-3xl mx-auto animate-in fade-in duration-500 py-6">
+     <div ref={testContainerRef} className="max-w-4xl mx-auto animate-in fade-in duration-500 py-6 select-none" onContextMenu={(e) => e.preventDefault()}>
+      
+      {/* Security Overlay Warning */}
+      {securityMessage && (
+          <div className="fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white p-4 text-center font-bold shadow-2xl animate-pulse">
+              <i className="fa-solid fa-triangle-exclamation mr-2"></i>
+              {securityMessage}
+          </div>
+      )}
+
+      {/* Fullscreen check overlay (if user escaped manually) */}
+      {!isFullscreen && !isSubmitting && (
+          <div className="fixed inset-0 bg-slate-900/95 z-[90] flex flex-col items-center justify-center text-white text-center p-8 backdrop-blur-md">
+              <i className="fa-solid fa-lock text-6xl mb-4 text-red-500"></i>
+              <h2 className="text-3xl font-black mb-2">Ujian Terkunci</h2>
+              <p className="mb-8 text-slate-300">Anda keluar dari mode layar penuh. Kembali ke fullscreen untuk melanjutkan.</p>
+              <button 
+                onClick={enterFullscreen}
+                className="px-8 py-3 bg-red-600 rounded-xl font-bold hover:bg-red-700 transition-colors"
+              >
+                  Kembali ke Fullscreen
+              </button>
+          </div>
+      )}
+
       <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 relative overflow-hidden">
         {isSubmitting && (
            <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
               <i className="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
-              <p className="font-bold text-slate-700">Menghitung Nilai...</p>
+              <p className="font-bold text-slate-700">Mengenkripsi & Mengirim Jawaban...</p>
            </div>
         )}
 
@@ -246,7 +417,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                </div>
                <h3 className="text-xl font-bold text-center text-slate-800 mb-2">Selesaikan Ujian?</h3>
                <p className="text-center text-slate-600 text-sm mb-6">
-                 Pastikan semua jawaban Anda sudah benar. Anda tidak dapat mengubah jawaban setelah dikirim.
+                 Pastikan jawaban Anda benar. Anda tidak dapat mengubahnya setelah dikirim.
                </p>
                <div className="flex space-x-3">
                  <button 
@@ -256,7 +427,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                    Batal
                  </button>
                  <button 
-                   onClick={handleConfirmSubmit}
+                   onClick={() => handleSubmitLogic(false)}
                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg"
                  >
                    Ya, Kirim
@@ -266,20 +437,30 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
            </div>
         )}
 
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-bold text-indigo-700">Soal {currentQuestionIndex + 1} dari {MOCK_SUMMATIVE_QUESTIONS.length}</h2>
-             <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
-                {module.isRemedial ? 'Remedial Mode' : 'Sumatif Mode'}
-             </span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-2">
-            <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+        <div className="mb-6 flex justify-between items-end">
+          <div className="flex-1 mr-4">
+            <div className="flex justify-between items-center mb-2">
+                <h2 className="font-bold text-indigo-700">Soal {currentQuestionIndex + 1} dari {questions.length}</h2>
+                <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100">
+                        <i className="fa-solid fa-circle-exclamation mr-1"></i>
+                        Pelanggaran: {violationCount}/{MAX_VIOLATIONS}
+                    </span>
+                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                        {module.isRemedial ? 'Remedial' : 'Sumatif'}
+                    </span>
+                </div>
+            </div>
+            <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+            </div>
           </div>
         </div>
         
         <div className="py-8 border-y border-slate-100 min-h-[150px]">
-          <p className="text-lg font-semibold text-slate-800 leading-relaxed">{currentQuestion.q}</p>
+          <p className="text-lg font-semibold text-slate-800 leading-relaxed select-none">
+              {currentQuestion.q}
+          </p>
         </div>
 
         <div className="mt-8 space-y-3">
@@ -287,7 +468,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
             <button
               key={index}
               onClick={() => handleSelectAnswer(index)}
-              className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center space-x-4 group ${
+              className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center space-x-4 group select-none ${
                 answers[currentQuestionIndex] === index
                   ? 'bg-indigo-50 border-indigo-500 text-indigo-800 shadow-sm'
                   : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300'
@@ -313,7 +494,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
             Sebelumnya
           </button>
           
-          {currentQuestionIndex === MOCK_SUMMATIVE_QUESTIONS.length - 1 ? (
+          {currentQuestionIndex === questions.length - 1 ? (
             <button
               onClick={handleInitSubmit}
               disabled={!isAllAnswered}
