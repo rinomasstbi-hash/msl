@@ -65,9 +65,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
     <aside className={sidebarClasses}>
       <div className="p-6 border-b border-emerald-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-emerald-900">
-            <i className="fa-solid fa-graduation-cap text-xl"></i>
-          </div>
+          <img 
+            src="https://id.ppdb.mtsn4jombang.org/assets/img/logo/logo_ppdb695.png" 
+            alt="Logo MTsN 4 Jombang" 
+            className="w-10 h-10 object-contain bg-white rounded-lg p-1"
+          />
           <div>
             <h1 className="font-bold text-lg leading-tight text-white">MSL</h1>
             <p className="text-xs text-emerald-300">MTsN 4 Jombang</p>

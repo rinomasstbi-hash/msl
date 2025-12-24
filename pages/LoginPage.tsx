@@ -39,8 +39,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <i className="fa-solid fa-mosque text-[150px] absolute -right-10 -bottom-10 text-white"></i>
           </div>
           <div className="relative z-10">
-            <div className="w-20 h-20 bg-white rounded-2xl mx-auto flex items-center justify-center text-emerald-800 mb-4 shadow-lg">
-              <i className="fa-solid fa-graduation-cap text-4xl"></i>
+            <div className="w-24 h-24 bg-white rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg p-2">
+               <img 
+                src="https://id.ppdb.mtsn4jombang.org/assets/img/logo/logo_ppdb695.png" 
+                alt="Logo MTsN 4 Jombang" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <h1 className="text-2xl font-black text-white">Madrasah Smart Learning</h1>
             <p className="text-emerald-200 text-sm mt-1">Digitalisasi Pembelajaran MTsN 4 Jombang</p>
