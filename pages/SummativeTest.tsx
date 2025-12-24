@@ -20,7 +20,7 @@ interface ShuffledQuestion {
 
 const MAX_VIOLATIONS = 3;
 const TEST_DURATION_SECONDS = 60 * 60; // 60 Menit Durasi Total
-const MIN_TIME_SECONDS = 90; // Batas minimal 90 detik untuk uji coba
+const MIN_TIME_SECONDS = 15; // Batas minimal 15 detik untuk uji coba
 
 const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummative, onStartRemedial }) => {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
