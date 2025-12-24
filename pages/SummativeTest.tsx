@@ -107,10 +107,14 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
           if (currentRemedialCount >= MAX_REMEDIAL_ATTEMPTS) {
               return;
           }
+          // Reset status to allow retake
           setIsSubmitting(false); 
           onStartRemedial(courseId, moduleId);
-          // Re-init randomization
-          initializeTest();
+          
+          // PENTING: Jangan langsung initializeTest().
+          // Set testStarted ke false agar user melihat halaman instruksi/peringatan lagi.
+          setTestStarted(false);
+          setQuestions([]); // Clear previous questions
           setCurrentQuestionIndex(0);
       }
   }
@@ -273,13 +277,23 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
                      {canRetake ? (
                          <div className="animate-in slide-in-from-bottom-2">
-                             <p className="text-red-700 font-medium mb-1">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).</p>
-                             <button 
-                                onClick={handleStartRemedial}
-                                className="inline-block bg-red-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200"
-                             >
-                                Ikuti Remedial Sekarang
-                             </button>
+                             <p className="text-red-700 font-medium mb-4">Nilai Anda dibawah Kriteria Ketercapaian Tujuan Pembelajaran (KKTP).</p>
+                             <div className="flex flex-col sm:flex-row justify-center gap-3">
+                                 <Link 
+                                    to={`/course/${courseId}`}
+                                    className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center"
+                                 >
+                                    <i className="fa-solid fa-arrow-left mr-2"></i>
+                                    Kembali
+                                 </Link>
+                                 <button 
+                                    onClick={handleStartRemedial}
+                                    className="px-8 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 flex items-center justify-center"
+                                 >
+                                    <span>Ikuti Remedial Sekarang</span>
+                                    <i className="fa-solid fa-arrow-right ml-2"></i>
+                                 </button>
+                             </div>
                          </div>
                      ) : (
                          <div className="bg-white/60 p-6 rounded-xl border border-red-100 animate-in zoom-in-95">
