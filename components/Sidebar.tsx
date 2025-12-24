@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
       <div className="p-6 border-b border-emerald-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <img 
-            src="https://id.ppdb.mtsn4jombang.org/assets/img/logo/logo_ppdb695.png" 
+            src="https://mtsn4jombang.sch.id/wp-content/uploads/2025/08/cropped-LOGOMTSN4BARU_web.png" 
             alt="Logo MTsN 4 Jombang" 
             className="w-10 h-10 object-contain bg-white rounded-lg p-1"
           />

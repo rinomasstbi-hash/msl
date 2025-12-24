@@ -41,7 +41,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <div className="relative z-10">
             <div className="w-24 h-24 bg-white rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg p-2">
                <img 
-                src="https://id.ppdb.mtsn4jombang.org/assets/img/logo/logo_ppdb695.png" 
+                src="https://mtsn4jombang.sch.id/wp-content/uploads/2025/08/cropped-LOGOMTSN4BARU_web.png" 
                 alt="Logo MTsN 4 Jombang" 
                 className="w-full h-full object-contain"
               />
