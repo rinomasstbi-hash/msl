@@ -46,8 +46,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 className="w-full h-full object-contain"
               />
             </div>
-            <h1 className="text-2xl font-black text-white">Madrasah Smart Learning</h1>
-            <p className="text-emerald-200 text-sm mt-1">Digitalisasi Pembelajaran MTsN 4 Jombang</p>
+            <h1 className="text-3xl font-black text-white tracking-wide">AMANAH</h1>
+            <p className="text-emerald-200 text-xs font-medium mt-2 leading-relaxed px-4">
+              Aplikasi Manajemen Akademik, Nilai <br/> & Akhlak Harian
+            </p>
           </div>
         </div>
 

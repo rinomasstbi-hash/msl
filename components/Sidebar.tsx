@@ -71,8 +71,8 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
             className="w-10 h-10 object-contain bg-white rounded-lg p-1"
           />
           <div>
-            <h1 className="font-bold text-lg leading-tight text-white">MSL</h1>
-            <p className="text-xs text-emerald-300">MTsN 4 Jombang</p>
+            <h1 className="font-bold text-lg leading-tight text-white tracking-wide">AMANAH</h1>
+            <p className="text-[10px] text-emerald-300">MTsN 4 Jombang</p>
           </div>
         </div>
         <button onClick={onClose} className="lg:hidden text-emerald-300 hover:text-white">
