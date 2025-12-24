@@ -8,10 +8,9 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   disabled?: boolean;
-  onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = false, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = false }) => {
   // Base links shared or public
   let links = [
     { to: '/', icon: 'fa-house', label: 'Dashboard' },
@@ -107,16 +106,6 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
             </span>
           </div>
         </div>
-
-        {onLogout && (
-            <button 
-                onClick={onLogout}
-                className="w-full flex items-center justify-center space-x-2 p-3 rounded-xl bg-emerald-950/30 text-emerald-200 hover:bg-red-600 hover:text-white transition-all text-sm font-bold"
-            >
-                <i className="fa-solid fa-right-from-bracket"></i>
-                <span>Keluar Aplikasi</span>
-            </button>
-        )}
       </div>
     </aside>
   );

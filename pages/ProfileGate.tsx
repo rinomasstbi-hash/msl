@@ -8,9 +8,10 @@ interface ProfileGateProps {
   user: User;
   onProfileUpdate: (user: User) => void;
   onLogout?: () => void;
+  startOnPasswordChange?: boolean; // New prop to force password mode
 }
 
-const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogout }) => {
+const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogout, startOnPasswordChange = false }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -19,7 +20,8 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
 
   // Modes: View, EditProfile, ChangePassword
   const [isEditing, setIsEditing] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  // Initialize state based on the prop
+  const [isChangingPassword, setIsChangingPassword] = useState(startOnPasswordChange);
   const [isProcessingImg, setIsProcessingImg] = useState(false);
   
   // Change Password State
@@ -123,6 +125,15 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
       agreed: true
     });
     setIsEditing(false);
+  };
+  
+  const handleCancelPassword = () => {
+      setIsChangingPassword(false);
+      setPassData({ oldPass: '', newPass: '', confirmPass: '' });
+      // If we started in password mode directly (via route), navigating back to profile or home might be cleaner
+      if (startOnPasswordChange) {
+          navigate('/profile');
+      }
   };
 
   const handleAvatarClick = () => {
@@ -242,10 +253,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
                <div className="pt-4 flex space-x-3">
                    <button 
                       type="button"
-                      onClick={() => {
-                          setIsChangingPassword(false);
-                          setPassData({ oldPass: '', newPass: '', confirmPass: '' });
-                      }}
+                      onClick={handleCancelPassword}
                       className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
                    >
                        Batal

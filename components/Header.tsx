@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { User } from '../types';
 
@@ -8,6 +8,7 @@ interface HeaderProps {
   onMenuClick: () => void;
   selectedSemester: string;
   onSemesterChange: (sem: string) => void;
+  onLogout: () => void;
 }
 
 const SEMESTER_OPTIONS = [
@@ -19,7 +20,23 @@ const SEMESTER_OPTIONS = [
   'Semester VI',
 ];
 
-const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, onSemesterChange }) => {
+const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, onSemesterChange, onLogout }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
     <header className="h-20 bg-white border-b border-slate-200 px-4 md:px-8 flex items-center justify-between sticky top-0 z-30 shadow-sm flex-shrink-0">
       <div className="flex items-center space-x-4">
@@ -61,18 +78,67 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, on
 
         <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
 
-        <Link to="/profile" className="flex items-center space-x-3 group cursor-pointer">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-emerald-700 transition-colors">{user.name}</p>
-            {/* Display Role - Class Name */}
-            <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">
-                {user.role} {user.className && ` - ${user.className}`}
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500/20 overflow-hidden shadow-md group-hover:ring-2 group-hover:ring-emerald-400 transition-all">
-            <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
-          </div>
-        </Link>
+        {/* User Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button 
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center space-x-3 group cursor-pointer focus:outline-none"
+          >
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-bold text-slate-800 leading-none group-hover:text-emerald-700 transition-colors">{user.name}</p>
+              {/* Display Role - Class Name */}
+              <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">
+                  {user.role} {user.className && ` - ${user.className}`}
+              </p>
+            </div>
+            <div className={`w-10 h-10 rounded-full bg-emerald-100 border-2 overflow-hidden shadow-md transition-all ${isDropdownOpen ? 'ring-2 ring-emerald-400 border-emerald-400' : 'border-emerald-500/20 group-hover:ring-2 group-hover:ring-emerald-400'}`}>
+              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+            </div>
+            <i className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform hidden sm:block ${isDropdownOpen ? 'rotate-180' : ''}`}></i>
+          </button>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-4 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 animate-in fade-in zoom-in-95 origin-top-right z-50">
+                <div className="px-4 py-3 border-b border-slate-50 sm:hidden">
+                    <p className="text-sm font-bold text-slate-800">{user.name}</p>
+                    <p className="text-xs text-slate-500">{user.role}</p>
+                </div>
+                
+                <Link 
+                    to="/profile" 
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors"
+                >
+                    <i className="fa-solid fa-user-gear w-6"></i>
+                    Profil Saya
+                </Link>
+                
+                <Link 
+                    to="/change-password" 
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="flex items-center px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors"
+                >
+                    <i className="fa-solid fa-key w-6"></i>
+                    Ubah Password
+                </Link>
+
+                <div className="border-t border-slate-100 my-1"></div>
+                
+                <button
+                    onClick={() => {
+                        setIsDropdownOpen(false);
+                        onLogout();
+                    }}
+                    className="w-full flex items-center px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors text-left"
+                >
+                    <i className="fa-solid fa-right-from-bracket w-6"></i>
+                    Keluar
+                </button>
+            </div>
+          )}
+        </div>
+
       </div>
     </header>
   );

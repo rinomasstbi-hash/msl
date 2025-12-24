@@ -139,7 +139,6 @@ const App: React.FC = () => {
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)} 
           disabled={isViewLocked}
-          onLogout={handleLogout}
         />
         
         {/* Mobile Backdrop */}
@@ -157,6 +156,7 @@ const App: React.FC = () => {
             onMenuClick={toggleSidebar} 
             selectedSemester={selectedSemester}
             onSemesterChange={setSelectedSemester}
+            onLogout={handleLogout}
           />
           
           {/* Main content area - Applies gray effect if view is locked */}
@@ -183,6 +183,12 @@ const App: React.FC = () => {
                   
                   {/* COMMON ROUTES */}
                   <Route path="/profile" element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} onLogout={handleLogout} />} />
+                  
+                  {/* CHANGE PASSWORD ROUTE */}
+                  <Route 
+                    path="/change-password" 
+                    element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} onLogout={handleLogout} startOnPasswordChange={true} />} 
+                  />
 
                   {/* STUDENT SPECIFIC ROUTES */}
                   {user.role === 'STUDENT' && (
