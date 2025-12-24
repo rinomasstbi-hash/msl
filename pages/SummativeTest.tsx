@@ -19,6 +19,8 @@ interface ShuffledQuestion {
 }
 
 const MAX_VIOLATIONS = 3;
+const TEST_DURATION_SECONDS = 60 * 60; // 60 Menit Durasi Total
+const MIN_TIME_SECONDS = 90; // Batas minimal 90 detik untuk uji coba
 
 const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummative, onStartRemedial }) => {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
@@ -35,8 +37,15 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
+  // State untuk Ragu-ragu
+  const [flaggedQuestions, setFlaggedQuestions] = useState<boolean[]>([]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Timer States
+  const [timeLeft, setTimeLeft] = useState(TEST_DURATION_SECONDS);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   // Security States
   const [violationCount, setViolationCount] = useState(0);
@@ -85,8 +94,11 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
       setQuestions(processedQuestions);
       setAnswers(Array(processedQuestions.length).fill(-1));
+      setFlaggedQuestions(Array(processedQuestions.length).fill(false)); // Init flagged array
       setTestStarted(true);
       setViolationCount(0);
+      setTimeLeft(TEST_DURATION_SECONDS);
+      setElapsedTime(0);
       enterFullscreen();
   };
 
@@ -133,6 +145,33 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   const forceSubmit = () => {
       // Wrapper to call submit logic directly
       handleSubmitLogic(true); 
+  };
+
+  // --- TIMER & AUTO SUBMIT LOGIC ---
+  useEffect(() => {
+    if (!testStarted || isSubmitting || module.summativeSubmitted) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          alert("Waktu Ujian Habis! Jawaban Anda akan dikirim secara otomatis.");
+          forceSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+
+      setElapsedTime(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [testStarted, isSubmitting, module.summativeSubmitted]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   // Event Listeners for Security
@@ -274,6 +313,18 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
     const newAnswers = [...answers];
     newAnswers[currentQuestionIndex] = optionIndex;
     setAnswers(newAnswers);
+    // If answered, remove flag
+    if (flaggedQuestions[currentQuestionIndex]) {
+        const newFlags = [...flaggedQuestions];
+        newFlags[currentQuestionIndex] = false;
+        setFlaggedQuestions(newFlags);
+    }
+  };
+
+  const handleToggleFlag = () => {
+    const newFlags = [...flaggedQuestions];
+    newFlags[currentQuestionIndex] = !newFlags[currentQuestionIndex];
+    setFlaggedQuestions(newFlags);
   };
 
   const handleNext = () => {
@@ -289,6 +340,11 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   };
 
   const handleInitSubmit = () => {
+      // Logic Check Minimum Time
+      if (elapsedTime < MIN_TIME_SECONDS) {
+          alert(`Anda belum memenuhi batas waktu minimum pengerjaan (${MIN_TIME_SECONDS} detik). Mohon periksa kembali jawaban Anda.`);
+          return;
+      }
       setShowConfirmModal(true);
   };
 
@@ -326,6 +382,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
   const isAllAnswered = !answers.includes(-1);
+  const isMinimumTimeMet = elapsedTime >= MIN_TIME_SECONDS;
 
   // VIEW: START SCREEN
   if (!testStarted) {
@@ -349,8 +406,9 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
               <li>Dilarang <strong>Pindah Tab</strong> atau membuka aplikasi lain.</li>
               <li>Dilarang menggunakan tombol <strong>Copy, Paste, PrintScreen</strong>.</li>
               <li>Klik kanan dan tombol navigasi browser dimatikan.</li>
+              <li>Waktu pengerjaan maksimal <strong>{Math.floor(TEST_DURATION_SECONDS / 60)} Menit</strong>.</li>
+              <li>Batas waktu minimum submit <strong>{MIN_TIME_SECONDS} Detik</strong>.</li>
               <li>Sistem akan mendeteksi pelanggaran. <strong>3x Pelanggaran = Auto Submit.</strong></li>
-              <li>Soal dan Opsi jawaban diacak secara otomatis oleh sistem.</li>
             </ul>
           </div>
 
@@ -376,7 +434,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
   // VIEW: QUESTION INTERFACE
   return (
-     <div ref={testContainerRef} className="max-w-4xl mx-auto animate-in fade-in duration-500 py-6 select-none" onContextMenu={(e) => e.preventDefault()}>
+     <div ref={testContainerRef} className="w-full h-screen flex flex-col p-4 select-none bg-slate-100" onContextMenu={(e) => e.preventDefault()}>
       
       {/* Security Overlay Warning */}
       {securityMessage && (
@@ -400,17 +458,16 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
               </button>
           </div>
       )}
-
-      <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 relative overflow-hidden">
-        {isSubmitting && (
-           <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+      
+      {isSubmitting && (
+           <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm fixed">
               <i className="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
               <p className="font-bold text-slate-700">Mengenkripsi & Mengirim Jawaban...</p>
            </div>
         )}
 
-        {showConfirmModal && (
-           <div className="absolute inset-0 bg-black/50 z-40 flex items-center justify-center p-4 backdrop-blur-sm">
+      {showConfirmModal && (
+           <div className="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center p-4 backdrop-blur-sm">
              <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-300">
                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
                  <i className="fa-solid fa-triangle-exclamation text-3xl"></i>
@@ -437,83 +494,185 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
            </div>
         )}
 
-        <div className="mb-6 flex justify-between items-end">
-          <div className="flex-1 mr-4">
-            <div className="flex justify-between items-center mb-2">
-                <h2 className="font-bold text-indigo-700">Soal {currentQuestionIndex + 1} dari {questions.length}</h2>
-                <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100">
-                        <i className="fa-solid fa-circle-exclamation mr-1"></i>
-                        Pelanggaran: {violationCount}/{MAX_VIOLATIONS}
-                    </span>
-                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
-                        {module.isRemedial ? 'Remedial' : 'Sumatif'}
-                    </span>
+      {/* Main Layout: Flex for Sidebar */}
+      <div className="flex flex-col lg:flex-row gap-6 h-full max-w-7xl mx-auto w-full">
+        
+        {/* Left Column: Question Area */}
+        <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full relative">
+            <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+                
+                {/* Header Info */}
+                <div className="mb-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center space-x-3">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Soal No.</span>
+                            <span className="text-3xl font-black text-indigo-600">{currentQuestionIndex + 1}</span>
+                            <span className="text-lg text-slate-300">/</span>
+                            <span className="text-lg text-slate-400 font-bold">{questions.length}</span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                             {/* Timer Display */}
+                             <div className={`px-3 py-1.5 rounded-lg font-mono font-bold border flex items-center shadow-sm ${timeLeft < 300 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
+                                <i className="fa-solid fa-clock mr-2 text-xs"></i>
+                                {formatTime(timeLeft)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Violation Badges */}
+                    <div className="flex items-center space-x-2">
+                         <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100">
+                            <i className="fa-solid fa-circle-exclamation mr-1"></i>
+                            Pelanggaran: {violationCount}/{MAX_VIOLATIONS}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                            {module.isRemedial ? 'Mode Remedial' : 'Mode Sumatif'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Question Text */}
+                <div className="py-6 border-t border-slate-100 min-h-[120px]">
+                    <p className="text-lg font-medium text-slate-800 leading-relaxed select-none">
+                        {currentQuestion.q}
+                    </p>
+                </div>
+
+                {/* Answer Options */}
+                <div className="space-y-3 mt-4">
+                    {currentQuestion.o.map((option, index) => (
+                        <button
+                        key={index}
+                        onClick={() => handleSelectAnswer(index)}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center space-x-4 group select-none ${
+                            answers[currentQuestionIndex] === index
+                            ? 'bg-indigo-50 border-indigo-500 text-indigo-800 shadow-md ring-1 ring-indigo-200'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'
+                        }`}
+                        >
+                        <div className={`w-8 h-8 rounded-full border-2 flex-shrink-0 flex items-center justify-center font-bold text-sm transition-colors ${
+                            answers[currentQuestionIndex] === index ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400 group-hover:border-indigo-300'
+                        }`}>
+                            {String.fromCharCode(65 + index)}
+                        </div>
+                        <span className="font-medium">{option}</span>
+                        </button>
+                    ))}
                 </div>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+
+            {/* Footer Navigation Controls */}
+            <div className="p-4 md:p-6 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-3 justify-between items-center">
+                <button
+                    onClick={handlePrev}
+                    disabled={currentQuestionIndex === 0}
+                    className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                    <i className="fa-solid fa-chevron-left mr-2"></i>
+                    Sebelumnya
+                </button>
+
+                <button
+                    onClick={handleToggleFlag}
+                    className={`flex-1 md:flex-none px-6 py-3 rounded-xl font-bold transition-all shadow-sm border ${
+                        flaggedQuestions[currentQuestionIndex] 
+                        ? 'bg-amber-100 text-amber-700 border-amber-300' 
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
+                    }`}
+                >
+                    <i className={`fa-solid ${flaggedQuestions[currentQuestionIndex] ? 'fa-flag' : 'fa-regular fa-flag'} mr-2`}></i>
+                    Ragu-ragu
+                </button>
+                
+                {currentQuestionIndex === questions.length - 1 ? (
+                    <div className="flex-1 md:flex-none flex flex-col items-end">
+                        <button
+                            onClick={handleInitSubmit}
+                            disabled={!isAllAnswered || !isMinimumTimeMet}
+                            className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 flex items-center justify-center"
+                        >
+                            Kirim Jawaban
+                            <i className="fa-solid fa-paper-plane ml-2"></i>
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={handleNext}
+                        disabled={answers[currentQuestionIndex] === -1 && !flaggedQuestions[currentQuestionIndex]} // Optional: force answer/flag before next
+                        className="flex-1 md:flex-none px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-all shadow-lg shadow-indigo-200"
+                    >
+                        Selanjutnya
+                        <i className="fa-solid fa-chevron-right ml-2"></i>
+                    </button>
+                )}
             </div>
-          </div>
-        </div>
-        
-        <div className="py-8 border-y border-slate-100 min-h-[150px]">
-          <p className="text-lg font-semibold text-slate-800 leading-relaxed select-none">
-              {currentQuestion.q}
-          </p>
         </div>
 
-        <div className="mt-8 space-y-3">
-          {currentQuestion.o.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => handleSelectAnswer(index)}
-              className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center space-x-4 group select-none ${
-                answers[currentQuestionIndex] === index
-                  ? 'bg-indigo-50 border-indigo-500 text-indigo-800 shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-full border-2 flex-shrink-0 flex items-center justify-center font-bold text-sm transition-colors ${
-                answers[currentQuestionIndex] === index ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400 group-hover:border-indigo-300'
-              }`}>
-                {String.fromCharCode(65 + index)}
-              </div>
-              <span className="font-medium">{option}</span>
-            </button>
-          ))}
+        {/* Right Column: Navigation Grid Sidebar */}
+        <div className="w-full lg:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col overflow-hidden h-fit max-h-full">
+            <div className="p-4 border-b border-slate-100 bg-slate-50">
+                <h3 className="font-bold text-slate-700 flex items-center">
+                    <i className="fa-solid fa-grip mr-2 text-indigo-500"></i>
+                    Navigasi Soal
+                </h3>
+            </div>
+            
+            <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
+                <div className="grid grid-cols-5 gap-2">
+                    {questions.map((_, idx) => {
+                        const isCurrent = idx === currentQuestionIndex;
+                        const isAnswered = answers[idx] !== -1;
+                        const isFlagged = flaggedQuestions[idx];
+
+                        // Logic Warna
+                        let bgClass = "bg-white border-slate-200 text-slate-600 hover:bg-slate-50";
+                        if (isFlagged) {
+                            bgClass = "bg-amber-300 border-amber-400 text-amber-900";
+                        } else if (isAnswered) {
+                            bgClass = "bg-blue-600 border-blue-600 text-white";
+                        }
+
+                        // Logic Border/Ring Active
+                        const activeClass = isCurrent ? "ring-2 ring-indigo-500 ring-offset-2 z-10" : "";
+
+                        return (
+                            <button
+                                key={idx}
+                                onClick={() => setCurrentQuestionIndex(idx)}
+                                className={`h-10 w-full rounded-lg text-sm font-bold border transition-all shadow-sm flex items-center justify-center ${bgClass} ${activeClass}`}
+                            >
+                                {idx + 1}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-[10px] space-y-2">
+                <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded bg-blue-600 border border-blue-600"></div>
+                    <span className="text-slate-500 font-bold">Sudah Dijawab</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded bg-amber-300 border border-amber-400"></div>
+                    <span className="text-slate-500 font-bold">Ragu-ragu</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded bg-white border border-slate-300"></div>
+                    <span className="text-slate-500 font-bold">Belum Dijawab</span>
+                </div>
+                
+                {!isMinimumTimeMet && (
+                    <div className="pt-2 mt-2 border-t border-slate-200">
+                        <p className="text-red-500 font-bold text-center">
+                             Submit dalam: {MIN_TIME_SECONDS - elapsedTime}s
+                        </p>
+                    </div>
+                )}
+            </div>
         </div>
 
-        <div className="mt-10 flex justify-between items-center pt-6 border-t border-slate-100">
-          <button
-            onClick={handlePrev}
-            disabled={currentQuestionIndex === 0}
-            className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <i className="fa-solid fa-arrow-left mr-2"></i>
-            Sebelumnya
-          </button>
-          
-          {currentQuestionIndex === questions.length - 1 ? (
-            <button
-              onClick={handleInitSubmit}
-              disabled={!isAllAnswered}
-              className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200"
-            >
-              Kirim Jawaban
-              <i className="fa-solid fa-paper-plane ml-2"></i>
-            </button>
-          ) : (
-             <button
-              onClick={handleNext}
-              disabled={answers[currentQuestionIndex] === -1}
-              className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all"
-            >
-              Selanjutnya
-              <i className="fa-solid fa-arrow-right ml-2"></i>
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
