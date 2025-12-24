@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, UserRole } from '../types';
 import * as api from '../services/api';
@@ -27,6 +27,11 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
   // Change Password State
   const [passData, setPassData] = useState({ oldPass: '', newPass: '', confirmPass: '' });
   const [passLoading, setPassLoading] = useState(false);
+
+  // Sync prop changes (e.g. navigating from /profile to /change-password)
+  useEffect(() => {
+      setIsChangingPassword(startOnPasswordChange);
+  }, [startOnPasswordChange]);
 
   // Initialize from Actual User Data
   const [formData, setFormData] = useState({

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 
 interface HeaderProps {
   user: User;
@@ -115,7 +115,7 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick, selectedSemester, on
                 </Link>
                 
                 <Link 
-                    to="/change-password" 
+                    to={user.role === UserRole.SUPER_ADMIN ? "/profile" : "/change-password"}
                     onClick={() => setIsDropdownOpen(false)}
                     className="flex items-center px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-emerald-700 transition-colors"
                 >
