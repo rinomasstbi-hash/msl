@@ -10,8 +10,8 @@ const COURSES_KEY = 'msl_courses';
 const MASTER_COURSES_KEY = 'msl_master_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 
-// BUMP VERSION: Naik ke 2.0 untuk memaksa reset total jika struktur rusak parah
-const CURRENT_DATA_VERSION = '2.0'; 
+// BUMP VERSION: Naik ke 3.0 untuk Force Structure Update
+const CURRENT_DATA_VERSION = '3.0'; 
 
 // --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
@@ -105,18 +105,29 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
   return { success: false, message: "Mode Offline." };
 };
 
-// --- DATA MERGING STRATEGY ---
+// --- DATA MERGING STRATEGY (CRITICAL FIX) ---
+// Logika: Selalu gunakan Struktur MASTER (Seed) sebagai dasar.
+// Hanya ambil "Progress" (nilai, boolean selesai) dari LocalStorage.
+// Jangan biarkan LocalStorage menimpa teacherId atau struktur modul.
 const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Course[]): Course[] => {
   return masterCourses.map(masterCourse => {
+    // Cari apakah ada data progress tersimpan untuk mapel ini
     const savedCourse = savedProgressCourses.find(c => c.id === masterCourse.id);
+    
+    // Jika tidak ada data tersimpan, gunakan Master mentah-mentah
     if (!savedCourse) return masterCourse;
 
+    // Jika ada, kita gabungkan (Merge)
     const mergedModules = masterCourse.modules.map(masterMod => {
       const savedMod = savedCourse.modules.find(m => m.id === masterMod.id);
+      
+      // Jika modul ini baru (tidak ada di save), pakai master
       if (!savedMod) return masterMod;
 
       return {
-        ...masterMod, 
+        ...masterMod, // PERTAHANKAN STRUKTUR MASTER (Title, Questions, Order)
+        
+        // TIMPA HANYA FIELD PROGRESS
         diagnosticSubmitted: savedMod.diagnosticSubmitted,
         tugasSubmitted: savedMod.tugasSubmitted,
         tugasFile: savedMod.tugasFile,
@@ -134,7 +145,7 @@ const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Cour
           if (!savedKb) return masterKb;
           
           return {
-            ...masterKb, 
+            ...masterKb, // PERTAHANKAN STRUKTUR KB MASTER
             isCompleted: savedKb.isCompleted, 
             resumeContent: savedKb.resumeContent 
           };
@@ -142,11 +153,8 @@ const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Cour
       };
     });
 
-    // PENTING: Jangan lupa merge teacherId dan className juga jika ada perubahan di master
     return { 
-        ...masterCourse, 
-        teacherId: masterCourse.teacherId, // Prioritize Master
-        className: masterCourse.className, // Prioritize Master
+        ...masterCourse, // PERTAHANKAN STRUKTUR COURSE MASTER (TeacherID, ClassName, Name)
         modules: mergedModules 
     };
   });
@@ -160,7 +168,7 @@ export const initializeData = (): void => {
     console.log(`System Upgrade: ${storedVersion} -> ${CURRENT_DATA_VERSION}. Hard Refreshing Data.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
     
-    // HAPUS Cache Lama
+    // Hapus cache courses agar dipaksa rebuild dari Seed
     window.localStorage.removeItem(COURSES_KEY);
     window.localStorage.removeItem(MASTER_COURSES_KEY);
   }
@@ -175,13 +183,16 @@ export const getUser = async (): Promise<User | null> => {
 export const getCourses = async (): Promise<Course[]> => {
   const user = getLocalData<User>(USER_KEY);
   
-  // 1. Ambil MASTER CONTENT
-  let masterCourses: Course[] = getLocalData<Course[]>(MASTER_COURSES_KEY) || MOCK_COURSES;
+  // 1. BASE STRUCTURE: SELALU DARI SEED (MOCK_COURSES)
+  // Kita tidak lagi mempercayai MASTER_COURSES_KEY dari LocalStorage untuk struktur dasar
+  // karena bisa jadi itu adalah data lama yang teacherId-nya kosong.
+  let baseStructure: Course[] = [...MOCK_COURSES]; 
   
   if (GOOGLE_SCRIPT_URL) {
       try {
+          // Coba fetch master terbaru dari cloud jika ada
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const timeoutId = setTimeout(() => controller.abort(), 2000); // Fast timeout
 
           const response = await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
@@ -192,20 +203,21 @@ export const getCourses = async (): Promise<Course[]> => {
 
           const result = await response.json();
           if (result.success && result.masterCourses && result.masterCourses.length > 0) {
-              masterCourses = result.masterCourses;
-              setLocalData(MASTER_COURSES_KEY, masterCourses);
+              baseStructure = result.masterCourses;
           }
       } catch (e) {
-          console.warn("Using Local Master Courses due to timeout/error.");
+          // Silent fail, use MOCK_COURSES
       }
   }
 
-  // 2. Ambil STUDENT PROGRESS
+  // 2. LOAD PROGRESS: DARI LOCAL STORAGE
   let savedProgress: Course[] = [];
+  
+  // Coba ambil cloud progress jika user siswa
   if (GOOGLE_SCRIPT_URL && user) {
     try {
        const controller = new AbortController();
-       const timeoutId = setTimeout(() => controller.abort(), 3000);
+       const timeoutId = setTimeout(() => controller.abort(), 2000);
 
        const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -222,39 +234,27 @@ export const getCourses = async (): Promise<Course[]> => {
           savedProgress = data.savedProgress;
       }
     } catch (e) {
-      console.warn("Using Local Progress due to timeout/error.");
+      // Silent fail
     }
   }
   
+  // Fallback ke LocalStorage jika cloud gagal/kosong
   if (savedProgress.length === 0) {
       savedProgress = getLocalData<Course[]>(COURSES_KEY) || [];
   }
 
-  let finalCourses = mergeCourseProgress(masterCourses, savedProgress);
+  // 3. MERGE: STRUKTUR SEED + PROGRESS LOCAL
+  let finalCourses = mergeCourseProgress(baseStructure, savedProgress);
 
-  // --- SELF-HEALING DATA FIX ---
-  // Ini adalah perbaikan krusial untuk masalah "Guru tidak punya mapel".
-  // Kita memaksa 'teacherId' di LocalStorage untuk mengikuti SeedData terbaru.
-  finalCourses = finalCourses.map(c => {
-      const seedData = MOCK_COURSES.find(m => m.id === c.id);
-      if (seedData) {
-          return {
-              ...c,
-              teacherId: seedData.teacherId, // Paksa update teacherId dari Seed
-              className: seedData.className  // Paksa update className dari Seed
-          };
-      }
-      return c;
-  });
-
-  // FILTERING LOGIC
+  // 4. FILTERING UI
   // Jika Siswa: Filter sesuai kelasnya.
-  // Jika Guru: KEMBALIKAN SEMUA DATA (karena guru butuh melihat list mapel untuk diedit).
-  // Filter kepemilikan guru dilakukan di UI level (ContentManagement.tsx), bukan di sini.
+  // Jika Guru/Admin: JANGAN DI FILTER DI API, kembalikan semua. 
+  // Filtering "My Courses" dilakukan di komponen UI (ContentManagement)
   if (user && user.role === 'STUDENT' && user.className) {
       finalCourses = finalCourses.filter(c => c.className === user.className);
   }
 
+  // Simpan hasil merge (struktur baru + nilai lama) kembali ke LocalStorage
   setLocalData(COURSES_KEY, finalCourses);
   return finalCourses;
 };

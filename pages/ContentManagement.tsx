@@ -50,10 +50,10 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
 
       setIsSaving(true);
       try {
-          // Call API to create module (Now Fire-and-Forget, so it's instant)
+          // Call API to create module
           await api.createModule(selectedCourseId, formData.title, formData.overview);
           
-          alert("UKBM berhasil dibuat! Data tersimpan di perangkat dan akan disinkronkan ke Cloud.");
+          alert("UKBM berhasil dibuat!");
           setIsModalOpen(false);
           setFormData({ title: '', overview: '' });
           
@@ -130,7 +130,7 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
             <div className="col-span-full py-12 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                 <i className="fa-solid fa-folder-open text-4xl text-slate-300 mb-4"></i>
                 <p className="text-slate-500 font-bold">Belum ada Mata Pelajaran yang Anda kelola.</p>
-                <p className="text-sm text-slate-400">Hubungi Admin untuk plotting jadwal mapel.</p>
+                <p className="text-sm text-slate-400 mb-4">Pastikan Anda login dengan akun Guru yang valid.</p>
             </div>
         )}
       </div>
@@ -158,8 +158,8 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                               </select>
                           </div>
                       ) : (
-                          <div className="bg-red-50 p-3 rounded-lg text-xs text-red-600 font-bold">
-                              Anda tidak memiliki akses sebagai Guru Pengampu mata pelajaran apapun.
+                          <div className="bg-red-50 p-3 rounded-lg text-xs text-red-600 font-bold flex flex-col items-start gap-2">
+                              <span>Anda tidak memiliki akses sebagai Guru Pengampu mata pelajaran apapun.</span>
                           </div>
                       )}
 
@@ -172,6 +172,7 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                             value={formData.title}
                             onChange={(e) => setFormData({...formData, title: e.target.value})}
                             className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 outline-none"
+                            disabled={myCourses.length === 0}
                           />
                       </div>
 
@@ -184,6 +185,7 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                             value={formData.overview}
                             onChange={(e) => setFormData({...formData, overview: e.target.value})}
                             className="w-full p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 outline-none resize-none"
+                            disabled={myCourses.length === 0}
                           ></textarea>
                       </div>
 
