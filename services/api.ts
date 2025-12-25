@@ -4,13 +4,14 @@ import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
+// Pastikan Anda sudah Deploy New Deployment > Who has access: Anyone > Copy URL baru.
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrpCVVsjzEsl0ZDfC6edOryiz7xkON4StYF8bXeypG5ZJJHxMAtPKr5SUGM3w6CBY/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
 const MASTER_COURSES_KEY = 'msl_master_courses'; // Cache for content definition
 const DATA_VERSION_KEY = 'msl_data_version';
-const CURRENT_DATA_VERSION = '1.7'; // Bump version
+const CURRENT_DATA_VERSION = '1.7'; 
 
 // --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
@@ -33,7 +34,6 @@ const setLocalData = <T>(key: string, value: T): void => {
 
 export const clearSession = (): void => {
   window.localStorage.removeItem(USER_KEY);
-  // Optional: clear courses if strictly secure
 };
 
 const apiDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -42,14 +42,21 @@ const apiDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export const login = async (email: string, password: string): Promise<User | null> => {
   if (GOOGLE_SCRIPT_URL) {
       try {
+          // Timeout login 5 detik
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const response = await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               body: JSON.stringify({
                   action: 'login',
                   email: email,
                   password: password
-              })
+              }),
+              signal: controller.signal
           });
+          clearTimeout(timeoutId);
+
           const result = await response.json();
           if (result.success && result.user) {
               const user = result.user;
@@ -60,7 +67,7 @@ export const login = async (email: string, password: string): Promise<User | nul
              return null; 
           }
       } catch (e) {
-          console.warn("Network Error during login", e);
+          console.warn("Network Error during login or timeout", e);
       }
   }
 
@@ -99,39 +106,26 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
   return { success: false, message: "Mode Offline." };
 };
 
-// --- DATA MERGING STRATEGY (MASTER CONTENT + STUDENT PROGRESS) ---
-/**
- * Merges the Master Course Content (from Teacher) with the Progress (from Student).
- */
+// --- DATA MERGING STRATEGY ---
 const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Course[]): Course[] => {
   return masterCourses.map(masterCourse => {
-    // Cari apakah siswa punya progress di mapel ini
     const savedCourse = savedProgressCourses.find(c => c.id === masterCourse.id);
-    
-    // Jika tidak ada progress, return materi mentah (semua belum dikerjakan)
     if (!savedCourse) return masterCourse;
 
-    // Merge Modules
     const mergedModules = masterCourse.modules.map(masterMod => {
       const savedMod = savedCourse.modules.find(m => m.id === masterMod.id);
-      
-      // Jika modul ini baru dibuat guru dan belum pernah disentuh siswa
       if (!savedMod) return masterMod;
 
       return {
-        ...masterMod, // Ambil Judul, Soal, KB Content dari MASTER (Guru Update)
-        
-        // Restore Status Pengerjaan dari SAVED (Siswa)
+        ...masterMod, 
         diagnosticSubmitted: savedMod.diagnosticSubmitted,
         tugasSubmitted: savedMod.tugasSubmitted,
         tugasFile: savedMod.tugasFile,
-        // tugasContent diambil dari saved jika ada, jika tidak kosong
         tugasContent: savedMod.tugasContent || '', 
         summativeSubmitted: savedMod.summativeSubmitted,
         summativeScore: savedMod.summativeScore,
         isRemedial: savedMod.isRemedial,
         remedialAttemptCount: savedMod.remedialAttemptCount ?? 0,
-        
         resumeScore: savedMod.resumeScore ?? 0,
         tugasScore: savedMod.tugasScore ?? 0,
         keaktifanScore: savedMod.keaktifanScore ?? 0,
@@ -141,18 +135,15 @@ const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Cour
           if (!savedKb) return masterKb;
           
           return {
-            ...masterKb, // Content dari Master
-            isCompleted: savedKb.isCompleted, // Status dari Saved
-            resumeContent: savedKb.resumeContent // Resume user dari Saved
+            ...masterKb, 
+            isCompleted: savedKb.isCompleted, 
+            resumeContent: savedKb.resumeContent 
           };
         })
       };
     });
 
-    return {
-        ...masterCourse,
-        modules: mergedModules
-    };
+    return { ...masterCourse, modules: mergedModules };
   });
 };
 
@@ -168,41 +159,53 @@ export const getUser = async (): Promise<User | null> => {
   return getLocalData<User>(USER_KEY);
 };
 
-// --- GET COURSES (CORE LOGIC) ---
+// --- GET COURSES ---
 export const getCourses = async (): Promise<Course[]> => {
   const user = getLocalData<User>(USER_KEY);
   
-  // 1. Ambil MASTER CONTENT (Definisi Mapel & UKBM dari Guru)
+  // 1. Ambil MASTER CONTENT
   let masterCourses: Course[] = getLocalData<Course[]>(MASTER_COURSES_KEY) || MOCK_COURSES;
   
   if (GOOGLE_SCRIPT_URL) {
       try {
+          // Timeout fetch master courses (3s) to prevent dashboard lag
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+
           const response = await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
-              body: JSON.stringify({ action: 'getMasterCourses' })
+              body: JSON.stringify({ action: 'getMasterCourses' }),
+              signal: controller.signal
           });
+          clearTimeout(timeoutId);
+
           const result = await response.json();
           if (result.success && result.masterCourses && result.masterCourses.length > 0) {
               masterCourses = result.masterCourses;
-              // Cache master courses
               setLocalData(MASTER_COURSES_KEY, masterCourses);
           }
       } catch (e) {
-          console.warn("Gagal fetch Master Courses, menggunakan cache/mock.");
+          console.warn("Gagal fetch Master Courses (Timeout/Offline), menggunakan cache local.");
       }
   }
 
-  // 2. Ambil STUDENT PROGRESS (Nilai & Status)
+  // 2. Ambil STUDENT PROGRESS
   let savedProgress: Course[] = [];
   if (GOOGLE_SCRIPT_URL && user) {
     try {
+       const controller = new AbortController();
+       const timeoutId = setTimeout(() => controller.abort(), 3000);
+
        const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ 
             action: 'getProgress',
             userId: user.id 
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
+
       const data = await response.json();
       if (data.success && data.savedProgress) {
           savedProgress = data.savedProgress;
@@ -212,28 +215,23 @@ export const getCourses = async (): Promise<Course[]> => {
     }
   }
   
-  // Jika cloud fail/kosong, cek local
   if (savedProgress.length === 0) {
       savedProgress = getLocalData<Course[]>(COURSES_KEY) || [];
   }
 
-  // 3. MERGE: Master Structure + Student Progress
   let finalCourses = mergeCourseProgress(masterCourses, savedProgress);
 
-  // 4. FILTERING: Tampilkan hanya mapel yang sesuai kelas siswa
   if (user && user.role === 'STUDENT' && user.className) {
       finalCourses = finalCourses.filter(c => c.className === user.className);
   }
 
-  // Simpan hasil merge ke local agar UI cepat
   setLocalData(COURSES_KEY, finalCourses);
-  
   return finalCourses;
 };
 
-// --- TEACHER: CREATE MODULE (SAVE TO CLOUD) ---
+// --- TEACHER: CREATE MODULE (FIXED STUCK BUTTON) ---
 export const createModule = async (courseId: string, title: string, overview: string): Promise<Course[]> => {
-    // 1. Ambil Data MASTER terbaru (agar tidak menimpa modul orang lain secara tidak sengaja)
+    // 1. Ambil Data MASTER terbaru
     let currentCourses = getLocalData<Course[]>(COURSES_KEY) || MOCK_COURSES;
 
     const newModuleId = `mod-${Date.now()}`;
@@ -248,7 +246,7 @@ export const createModule = async (courseId: string, title: string, overview: st
                 subject: c.name,
                 order: c.modules.length + 1,
                 availableAt: new Date().toISOString(),
-                diagnosticSubmitted: false, // Default state
+                diagnosticSubmitted: false, 
                 tugasSubmitted: false,
                 summativeSubmitted: false,
                 summativeScore: 0,
@@ -274,16 +272,20 @@ export const createModule = async (courseId: string, title: string, overview: st
     });
 
     // 3. Simpan ke Local Storage (Optimistic Update)
+    // Ini PENTING agar user langsung melihat perubahan meskipun internet mati
     setLocalData(COURSES_KEY, updatedCourses);
 
-    // 4. KIRIM KE CLOUD (Sheet 'Courses')
-    // Kita harus mencari object course yang diubah untuk dikirim
+    // 4. KIRIM KE CLOUD (Sheet 'Courses') dengan TIMEOUT
     const changedCourse = updatedCourses.find(c => c.id === courseId);
 
     if (GOOGLE_SCRIPT_URL && changedCourse) {
+        // PERBAIKAN UTAMA: Tambahkan Timeout 3 Detik
+        // Jika Server Google Script macet > 3 detik, kita anggap sukses secara lokal saja (Offline Mode)
+        // Agar UI tidak Stuck di "Menyimpan..."
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
         try {
-            // Bersihkan data progress siswa dari object sebelum disimpan sebagai Master
-            // (Kita hanya ingin menyimpan struktur modul, bukan nilai siswa yg sedang login)
             const cleanModules = changedCourse.modules.map(m => ({
                 id: m.id,
                 title: m.title,
@@ -291,7 +293,6 @@ export const createModule = async (courseId: string, title: string, overview: st
                 order: m.order,
                 availableAt: m.availableAt,
                 tugasQuestion: m.tugasQuestion,
-                // Reset student states
                 diagnosticSubmitted: false,
                 tugasSubmitted: false,
                 summativeSubmitted: false,
@@ -306,8 +307,8 @@ export const createModule = async (courseId: string, title: string, overview: st
                     order: k.order,
                     content: k.content,
                     estimatedTime: k.estimatedTime,
-                    isCompleted: false, // Reset
-                    resumeContent: ''   // Reset
+                    isCompleted: false, 
+                    resumeContent: ''   
                 }))
             }));
 
@@ -321,15 +322,20 @@ export const createModule = async (courseId: string, title: string, overview: st
                 body: JSON.stringify({
                     action: 'saveCourseContent',
                     course: courseToSend
-                })
+                }),
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
             console.log("Master UKBM saved to Cloud.");
+
         } catch (e) {
-            console.error("Gagal menyimpan Master UKBM ke Cloud", e);
-            alert("Gagal menyimpan ke server. Data hanya tersimpan lokal.");
+            // Kita CATCH errornya tapi TIDAK me-rethrow
+            // Agar fungsi tetap return updatedCourses dan UI bisa lanjut.
+            console.warn("Gagal menyimpan ke Cloud (Timeout/Offline). Data tersimpan lokal.");
         }
     }
 
+    // Selalu return updatedCourses agar UI terupdate
     return updatedCourses;
 };
 
@@ -339,13 +345,14 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     if (GOOGLE_SCRIPT_URL) {
       try {
         const { learningProgress, ...userToSend } = updatedUser;
-        await fetch(GOOGLE_SCRIPT_URL, {
+        // Fire and forget (tidak await) agar UI cepat
+        fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
             action: 'updateUser',
             user: userToSend
           })
-        });
+        }).catch(e => console.warn("Background update profile failed", e));
       } catch (e) {
         console.error("Cloud update failed", e);
       }
@@ -356,28 +363,26 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
 // --- SYNC HELPER ---
 const syncToCloud = async (courses: Course[]) => {
   const user = getLocalData<User>(USER_KEY);
-  // Hanya siswa yang perlu menyimpan progress pengerjaan
   if (user && user.role !== 'STUDENT') return; 
 
   if (GOOGLE_SCRIPT_URL && user) {
     try {
-      await fetch(GOOGLE_SCRIPT_URL, {
+      // Fire and forget
+      fetch(GOOGLE_SCRIPT_URL, {
          method: 'POST',
          body: JSON.stringify({
            action: 'updateProgress', 
            userId: user.id,          
            courses: courses 
          })
-      });
-    } catch (e) { console.error("Background sync failed", e); }
+      }).catch(e => console.warn("Background sync failed"));
+    } catch (e) { console.error("Background sync error", e); }
   }
 };
 
 // --- STUDENT ACTIONS ---
-
 export const updateKBCompletion = async (courseId: string, kbId: string, resumeContent?: string): Promise<Course[]> => {
   const courses = await getCourses();
-  
   const updatedCourses = courses.map(course => {
     if (course.id === courseId) {
       return {
@@ -395,7 +400,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
                 }
                 return kb;
               });
-
               return {
                   ...module,
                   kbs: updatedKBs,
@@ -409,7 +413,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
     }
     return course;
   });
-
   setLocalData(COURSES_KEY, updatedCourses);
   syncToCloud(updatedCourses);
   return updatedCourses;
