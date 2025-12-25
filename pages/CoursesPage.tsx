@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Course } from '../types';
+import { MOCK_AUTH_USERS } from '../services/seedData';
 
 interface CoursesPageProps {
   courses: Course[];
@@ -109,6 +110,10 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ courses }) => {
             // Mock End Date (e.g., 6 months from start or generic semester end)
             const endDate = '2023-12-20T00:00:00Z'; 
 
+            // GET TEACHER NAME DYNAMICALLY
+            const teacher = MOCK_AUTH_USERS.find(u => u.id === course.teacherId);
+            const teacherName = teacher ? teacher.name : "Guru Pengampu";
+
             return (
               <Link 
                 key={course.id} 
@@ -134,7 +139,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ courses }) => {
                   </h4>
                   <div className="flex items-center space-x-2 text-sm font-semibold text-slate-500">
                      <i className="fa-solid fa-user-tie text-xs opacity-70"></i>
-                     <span>Guru Pengampu Mapel</span>
+                     <span>{teacherName}</span>
                   </div>
                 </div>
                 

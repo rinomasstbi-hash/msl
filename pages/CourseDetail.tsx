@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Course } from '../types';
+import { MOCK_AUTH_USERS } from '../services/seedData';
 
 interface CourseDetailProps {
   courses: Course[];
@@ -10,6 +11,10 @@ interface CourseDetailProps {
 const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
   const { id } = useParams<{ id: string }>();
   const course = courses.find(c => c.id === id);
+  
+  // Cari data guru berdasarkan teacherId di course
+  const teacher = course ? MOCK_AUTH_USERS.find(u => u.id === course.teacherId) : null;
+  const teacherName = teacher ? teacher.name : "Guru Pengampu";
   
   // State for Accordion
   const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
@@ -44,7 +49,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
             <span className="text-slate-600">{course.name}</span>
           </nav>
           <h1 className="text-3xl font-black text-slate-800">{course.name}</h1>
-          <p className="text-slate-500">Oleh: <span className="font-semibold text-emerald-700">Ust. Muhammad Ali, M.Pd</span></p>
+          <p className="text-slate-500">Oleh: <span className="font-semibold text-emerald-700">{teacherName}</span></p>
         </div>
         <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-3">
           <div className="text-right">

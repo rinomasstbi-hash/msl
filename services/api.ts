@@ -10,8 +10,8 @@ const COURSES_KEY = 'msl_courses';
 const MASTER_COURSES_KEY = 'msl_master_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 
-// BUMP VERSION: Mengubah ke 1.8 untuk memaksa reset data di browser user
-const CURRENT_DATA_VERSION = '1.8'; 
+// BUMP VERSION: Naik ke 2.0 untuk memaksa reset total jika struktur rusak parah
+const CURRENT_DATA_VERSION = '2.0'; 
 
 // --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
@@ -142,21 +142,25 @@ const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Cour
       };
     });
 
-    return { ...masterCourse, modules: mergedModules };
+    // PENTING: Jangan lupa merge teacherId dan className juga jika ada perubahan di master
+    return { 
+        ...masterCourse, 
+        teacherId: masterCourse.teacherId, // Prioritize Master
+        className: masterCourse.className, // Prioritize Master
+        modules: mergedModules 
+    };
   });
 };
 
-// --- INITIALIZE DATA (CRITICAL FIX FOR ID MISMATCH) ---
+// --- INITIALIZE DATA ---
 export const initializeData = (): void => {
   const storedVersion = getLocalData<string>(DATA_VERSION_KEY);
   
-  // Jika versi data berubah (misal dari 1.7 ke 1.8), lakukan HARD RESET pada cache course.
-  // Ini penting agar struktur data baru (seperti teacherId) termuat dengan benar.
   if (storedVersion !== CURRENT_DATA_VERSION) {
-    console.log(`System Upgrade: ${storedVersion} -> ${CURRENT_DATA_VERSION}. Refreshing Data Cache.`);
+    console.log(`System Upgrade: ${storedVersion} -> ${CURRENT_DATA_VERSION}. Hard Refreshing Data.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
     
-    // HAPUS Cache Lama agar getCourses mengambil ulang dari MOCK/Seed Data yang benar
+    // HAPUS Cache Lama
     window.localStorage.removeItem(COURSES_KEY);
     window.localStorage.removeItem(MASTER_COURSES_KEY);
   }
@@ -172,7 +176,6 @@ export const getCourses = async (): Promise<Course[]> => {
   const user = getLocalData<User>(USER_KEY);
   
   // 1. Ambil MASTER CONTENT
-  // Jika tidak ada di local (karena baru direset), ambil dari MOCK_COURSES
   let masterCourses: Course[] = getLocalData<Course[]>(MASTER_COURSES_KEY) || MOCK_COURSES;
   
   if (GOOGLE_SCRIPT_URL) {
@@ -229,6 +232,25 @@ export const getCourses = async (): Promise<Course[]> => {
 
   let finalCourses = mergeCourseProgress(masterCourses, savedProgress);
 
+  // --- SELF-HEALING DATA FIX ---
+  // Ini adalah perbaikan krusial untuk masalah "Guru tidak punya mapel".
+  // Kita memaksa 'teacherId' di LocalStorage untuk mengikuti SeedData terbaru.
+  finalCourses = finalCourses.map(c => {
+      const seedData = MOCK_COURSES.find(m => m.id === c.id);
+      if (seedData) {
+          return {
+              ...c,
+              teacherId: seedData.teacherId, // Paksa update teacherId dari Seed
+              className: seedData.className  // Paksa update className dari Seed
+          };
+      }
+      return c;
+  });
+
+  // FILTERING LOGIC
+  // Jika Siswa: Filter sesuai kelasnya.
+  // Jika Guru: KEMBALIKAN SEMUA DATA (karena guru butuh melihat list mapel untuk diedit).
+  // Filter kepemilikan guru dilakukan di UI level (ContentManagement.tsx), bukan di sini.
   if (user && user.role === 'STUDENT' && user.className) {
       finalCourses = finalCourses.filter(c => c.className === user.className);
   }
@@ -283,8 +305,6 @@ export const createModule = async (courseId: string, title: string, overview: st
     setLocalData(COURSES_KEY, updatedCourses);
 
     // 4. KIRIM KE CLOUD (BACKGROUND PROCESS - FIRE AND FORGET)
-    // PERBAIKAN: Kita TIDAK menggunakan 'await' disini.
-    // Fetch berjalan di background, function langsung return 'updatedCourses'.
     const changedCourse = updatedCourses.find(c => c.id === courseId);
 
     if (GOOGLE_SCRIPT_URL && changedCourse) {
@@ -319,7 +339,6 @@ export const createModule = async (courseId: string, title: string, overview: st
             modules: cleanModules
         };
 
-        // BACKGROUND SYNC: No Await
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify({
@@ -333,7 +352,6 @@ export const createModule = async (courseId: string, title: string, overview: st
         });
     }
 
-    // 5. Langsung kembalikan hasil update agar UI refresh detik itu juga
     return updatedCourses;
 };
 
@@ -344,7 +362,6 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     if (GOOGLE_SCRIPT_URL) {
       try {
         const { learningProgress, ...userToSend } = updatedUser;
-        // Background Sync: No Await
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
