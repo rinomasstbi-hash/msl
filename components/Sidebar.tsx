@@ -31,7 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
     links = [
       ...links,
       { to: '/monitoring', icon: 'fa-chalkboard-user', label: 'Monitoring Siswa' },
-      { to: '/content-mgmt', icon: 'fa-pen-to-square', label: 'Kelola Modul & KB' },
+      { to: '/content-mgmt', icon: 'fa-pen-to-square', label: 'Kelola UKBM & KB' },
       { to: '/grading', icon: 'fa-marker', label: 'Input Nilai' },
     ];
   }

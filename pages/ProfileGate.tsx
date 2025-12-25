@@ -15,8 +15,9 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Check Role
+  // Check Roles
   const isAdmin = user.role === UserRole.SUPER_ADMIN;
+  const isTeacher = user.role === UserRole.TEACHER;
 
   // Modes: View, EditProfile, ChangePassword
   const [isEditing, setIsEditing] = useState(false);
@@ -45,9 +46,9 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
   });
 
   // Validasi form: 
-  // Jika Admin: Cukup Email yg wajib.
+  // Jika Admin atau Teacher: Cukup Email yg wajib.
   // Jika Siswa: Semua data wajib.
-  const isFormValid = isAdmin 
+  const isFormValid = (isAdmin || isTeacher)
     ? formData.email && formData.email.includes('@')
     : formData.email && formData.address && formData.parentName && formData.phone && formData.agreed;
 
@@ -278,22 +279,45 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
 
   // --- VIEW MODE (Read Only) ---
   if (user.profileComplete && !isEditing) {
-    // SPECIAL VIEW FOR ADMIN
-    if (isAdmin) {
+    // SPECIAL VIEW FOR ADMIN & TEACHER
+    if (isAdmin || isTeacher) {
         return (
             <div className="max-w-xl mx-auto space-y-8 py-10 animate-in fade-in duration-500">
                 <div className="text-center">
                     <div className="relative inline-block mb-4">
                         <img src={formData.avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg bg-emerald-50" />
                         <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center text-white border-2 border-white">
-                            <i className="fa-solid fa-user-shield"></i>
+                            <i className={`fa-solid ${isTeacher ? 'fa-chalkboard-user' : 'fa-user-shield'}`}></i>
                         </div>
                     </div>
                     <h1 className="text-2xl font-black text-slate-800">{user.name}</h1>
-                    <span className="mt-2 inline-block bg-slate-800 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Administrator System</span>
+                    <span className={`mt-2 inline-block text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider ${isTeacher ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+                        {isTeacher ? 'Guru Mata Pelajaran' : 'Administrator System'}
+                    </span>
                 </div>
 
                 <div className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-6">
+                    {/* Teacher Specific Info (Read Only) */}
+                    {isTeacher && (
+                        <>
+                        <div className="grid grid-cols-2 gap-4 pb-6 border-b border-slate-100">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Jabatan/Tugas Tambahan</label>
+                                <p className="text-slate-700 font-bold">{user.className || '-'}</p>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Semester Aktif</label>
+                                <p className="text-slate-700 font-bold">{user.semester || '-'}</p>
+                            </div>
+                        </div>
+                        {/* Mata Pelajaran Added Here */}
+                        <div className="pb-6 border-b border-slate-100">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mata Pelajaran Diampu</label>
+                                <p className="text-slate-700 font-bold text-lg">{user.subject || '-'}</p>
+                        </div>
+                        </>
+                    )}
+
                     <div>
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Login</label>
                         <div className="flex items-center space-x-3 mt-1">
@@ -437,17 +461,17 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
 
         <h1 className="text-2xl font-black text-slate-800">
             {isEditing 
-                ? (isAdmin ? 'Edit Profil Admin' : 'Edit Profil Siswa') 
-                : (isAdmin ? 'Profil Administrator' : 'Verifikasi Profil')}
+                ? (isAdmin || isTeacher ? 'Edit Profil' : 'Edit Profil Siswa') 
+                : (isAdmin || isTeacher ? 'Profil Pengguna' : 'Verifikasi Profil')}
         </h1>
         <p className="text-slate-500 mt-2">
           {isEditing 
             ? 'Klik foto di atas untuk mengganti Avatar.' 
-            : (isAdmin ? 'Kelola email dan keamanan akun.' : 'Lengkapi data berikut sebelum memulai pembelajaran.')}
+            : (isAdmin || isTeacher ? 'Kelola data akun Anda.' : 'Lengkapi data berikut sebelum memulai pembelajaran.')}
         </p>
       </div>
 
-      {!isEditing && !isAdmin && (
+      {!isEditing && !isAdmin && !isTeacher && (
         <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl">
           <div className="flex items-start">
             <i className="fa-solid fa-triangle-exclamation text-amber-500 mt-1 mr-3"></i>
@@ -461,7 +485,7 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 space-y-8">
         
-        {/* SECTION 1: DATA AKADEMIK (READ ONLY) - HIDE FOR ADMIN */}
+        {/* SECTION 1: DATA AKADEMIK (READ ONLY) - HIDE FOR ADMIN ONLY */}
         {!isAdmin && (
             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
@@ -473,12 +497,15 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
                         <label className="text-xs font-bold text-slate-500">Nama Lengkap</label>
                         <input type="text" value={user.name} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
                     </div>
+                    {/* HIDE NISN FOR TEACHER */}
+                    {!isTeacher && (
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500">NISN</label>
+                            <input type="text" value={user.nisn || '0000000000'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
+                        </div>
+                    )}
                     <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500">NISN</label>
-                        <input type="text" value={user.nisn || '0000000000'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500">Kelas</label>
+                        <label className="text-xs font-bold text-slate-500">{isTeacher ? 'Jabatan/Kelas' : 'Kelas'}</label>
                         <input type="text" value={user.className || '-'} disabled className="w-full bg-slate-200 text-slate-500 p-3 rounded-xl border border-slate-300 font-bold cursor-not-allowed" />
                     </div>
                     <div className="space-y-1">
@@ -524,8 +551,8 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
                     />
                 </div>
                 
-                {/* HIDE FOR ADMIN */}
-                {!isAdmin && (
+                {/* HIDE DOMISILI & PARENT FOR ADMIN & TEACHER */}
+                {!isAdmin && !isTeacher && (
                     <>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-slate-700">Alamat Lengkap (Domisili)</label>
@@ -565,8 +592,8 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
              </div>
         </div>
 
-        {/* SECTION 3: PAKTA INTEGRITAS - HIDE FOR ADMIN */}
-        {!isAdmin && (
+        {/* SECTION 3: PAKTA INTEGRITAS - HIDE FOR ADMIN & TEACHER */}
+        {!isAdmin && !isTeacher && (
             <div className="bg-emerald-50 p-4 rounded-xl space-y-4">
             <h4 className="font-bold text-emerald-800 flex items-center">
                 <i className="fa-solid fa-file-signature mr-2 text-emerald-600"></i>
@@ -592,8 +619,8 @@ const ProfileGate: React.FC<ProfileGateProps> = ({ user, onProfileUpdate, onLogo
         )}
 
         <div className="flex items-center space-x-4">
-          {/* Admin Change Password Button in Form Mode (Initial Setup or Editing) */}
-          {isAdmin && !isEditing && (
+          {/* Change Password Button in Form Mode (For Admin/Teacher editing self) */}
+          {(isAdmin || isTeacher) && !isEditing && (
              <button
               type="button"
               onClick={() => setIsChangingPassword(true)}

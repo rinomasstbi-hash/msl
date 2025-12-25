@@ -49,7 +49,7 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
         <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-3">
           <div className="text-right">
             <p className="text-[10px] font-bold text-slate-400 uppercase">Total UKBM</p>
-            <p className="text-sm font-bold text-emerald-600">{course.modules.length} Modul</p>
+            <p className="text-sm font-bold text-emerald-600">{course.modules.length} UKBM</p>
           </div>
           <i className="fa-solid fa-layer-group text-emerald-500"></i>
         </div>

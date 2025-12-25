@@ -42,7 +42,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                      </div>
                      <div className="w-px h-12 bg-slate-200 hidden md:block"></div>
                      <div className="text-right">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Modul</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total UKBM</p>
                         <p className="text-3xl font-black text-slate-700">{courses.length}</p>
                      </div>
                 </div>
@@ -68,7 +68,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, courses }) => {
                         <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-4">
                             <i className="fa-solid fa-pen-to-square text-xl"></i>
                         </div>
-                        <h3 className="font-bold text-slate-800">Input Modul & KB</h3>
+                        <h3 className="font-bold text-slate-800">Input UKBM & KB</h3>
                         <p className="text-sm text-slate-500 mt-2 mb-4">
                             Buat atau edit materi ajar, soal diagnostik, dan tes sumatif.
                         </p>

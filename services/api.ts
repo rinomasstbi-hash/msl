@@ -1,18 +1,18 @@
 
-import { User, Course, KKTP } from '../types';
+import { User, Course, KKTP, Module } from '../types';
 import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
 // PENTING: Paste URL Web App Google Apps Script Anda di sini.
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxafZmZjAZoVhjG0pLsNag_KOFq6BvJrsadt6qVDkle7-3otNUcnIL37fEUwCpkd6A/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrpCVVsjzEsl0ZDfC6edOryiz7xkON4StYF8bXeypG5ZJJHxMAtPKr5SUGM3w6CBY/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
+const MASTER_COURSES_KEY = 'msl_master_courses'; // Cache for content definition
 const DATA_VERSION_KEY = 'msl_data_version';
-// Increment this version whenever you add new Seed Data (like UKBM 2) to force client update
-const CURRENT_DATA_VERSION = '1.4a'; 
+const CURRENT_DATA_VERSION = '1.7'; // Bump version
 
-// --- Helper functions to interact with localStorage (Fallback) ---
+// --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
   try {
     const item = window.localStorage.getItem(key);
@@ -33,58 +33,39 @@ const setLocalData = <T>(key: string, value: T): void => {
 
 export const clearSession = (): void => {
   window.localStorage.removeItem(USER_KEY);
-  // Keep courses data cached, but maybe needed to clear if different user? 
-  // For now we keep it to speed up demo
+  // Optional: clear courses if strictly secure
 };
+
+const apiDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- AUTH SERVICE ---
 export const login = async (email: string, password: string): Promise<User | null> => {
-  
-  // 1. PRIORITAS UTAMA: Cek ke Database Google Sheet (Cloud)
   if (GOOGLE_SCRIPT_URL) {
       try {
-          // Mengirim kredensial ke Google Script untuk diverifikasi
           const response = await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               body: JSON.stringify({
-                  action: 'login', // Action Login hanya cek Sheet 'Users'
+                  action: 'login',
                   email: email,
                   password: password
               })
           });
-          
           const result = await response.json();
-          
-          // Jika Google Script mengembalikan success: true dan data user
           if (result.success && result.user) {
               const user = result.user;
               setLocalData(USER_KEY, user);
               return user;
           } 
-          
-          // SECURITY UPDATE:
-          // Jika koneksi sukses tapi user TIDAK ditemukan atau password salah di Cloud,
-          // JANGAN lanjut cek data lokal. Langsung return null.
-          // Ini mencegah akun Mock login jika tidak ada di Sheet.
           if (!result.success) {
-             console.log("Login ditolak oleh server Cloud.");
              return null; 
           }
-
       } catch (e) {
-          console.warn("Gagal koneksi ke database akun cloud (Network Error). Mencoba data lokal...", e);
-          // HANYA jika terjadi Error Jaringan (Offline/Script Error), code akan lanjut ke bawah (Fallback).
+          console.warn("Network Error during login", e);
       }
   }
 
-  // 2. FALLBACK: Cek Data Lokal (MOCK_AUTH_USERS)
-  // Hanya dieksekusi jika:
-  // a. GOOGLE_SCRIPT_URL kosong
-  // b. Terjadi Network Error (catch block di atas)
-  
+  // Fallback Mock
   await apiDelay(800); 
-  
-  // Password default lokal: '123456'
   if (password === '123456') {
     const foundUser = MOCK_AUTH_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (foundUser) {
@@ -97,7 +78,7 @@ export const login = async (email: string, password: string): Promise<User | nul
 
 export const changePassword = async (oldPassword: string, newPassword: string): Promise<{success: boolean, message: string}> => {
   const user = getLocalData<User>(USER_KEY);
-  if (!user) return { success: false, message: "Sesi habis, silakan login ulang." };
+  if (!user) return { success: false, message: "Sesi habis." };
 
   if (GOOGLE_SCRIPT_URL) {
       try {
@@ -110,209 +91,289 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
                   newPassword: newPassword
               })
           });
-          const result = await response.json();
-          return result;
+          return await response.json();
       } catch (e) {
-          console.error(e);
-          return { success: false, message: "Gagal terhubung ke server (Network Error)." };
+          return { success: false, message: "Network Error." };
       }
   }
-
-  // Fallback for demo users (Mock)
-  await apiDelay(800);
-  if (oldPassword === '123456') {
-      return { success: true, message: "Password berhasil diubah (Mode Offline/Simulasi)." };
-  } else {
-      return { success: false, message: "Password lama salah." };
-  }
+  return { success: false, message: "Mode Offline." };
 };
 
-// --- DATA MERGING STRATEGY (CRITICAL FOR LMS) ---
+// --- DATA MERGING STRATEGY (MASTER CONTENT + STUDENT PROGRESS) ---
 /**
- * Merges the fresh structure from code (Seed Data) with the progress saved in DB.
+ * Merges the Master Course Content (from Teacher) with the Progress (from Student).
  */
-const mergeCourseProgress = (seedCourses: Course[], savedCourses: Course[]): Course[] => {
-  return seedCourses.map(seedCourse => {
-    // Find if user has progress on this course
-    const savedCourse = savedCourses.find(c => c.id === seedCourse.id);
+const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Course[]): Course[] => {
+  return masterCourses.map(masterCourse => {
+    // Cari apakah siswa punya progress di mapel ini
+    const savedCourse = savedProgressCourses.find(c => c.id === masterCourse.id);
     
-    // If no progress found, return the fresh seed course (e.g. new course added)
-    if (!savedCourse) return seedCourse;
+    // Jika tidak ada progress, return materi mentah (semua belum dikerjakan)
+    if (!savedCourse) return masterCourse;
+
+    // Merge Modules
+    const mergedModules = masterCourse.modules.map(masterMod => {
+      const savedMod = savedCourse.modules.find(m => m.id === masterMod.id);
+      
+      // Jika modul ini baru dibuat guru dan belum pernah disentuh siswa
+      if (!savedMod) return masterMod;
+
+      return {
+        ...masterMod, // Ambil Judul, Soal, KB Content dari MASTER (Guru Update)
+        
+        // Restore Status Pengerjaan dari SAVED (Siswa)
+        diagnosticSubmitted: savedMod.diagnosticSubmitted,
+        tugasSubmitted: savedMod.tugasSubmitted,
+        tugasFile: savedMod.tugasFile,
+        // tugasContent diambil dari saved jika ada, jika tidak kosong
+        tugasContent: savedMod.tugasContent || '', 
+        summativeSubmitted: savedMod.summativeSubmitted,
+        summativeScore: savedMod.summativeScore,
+        isRemedial: savedMod.isRemedial,
+        remedialAttemptCount: savedMod.remedialAttemptCount ?? 0,
+        
+        resumeScore: savedMod.resumeScore ?? 0,
+        tugasScore: savedMod.tugasScore ?? 0,
+        keaktifanScore: savedMod.keaktifanScore ?? 0,
+
+        kbs: masterMod.kbs.map(masterKb => {
+          const savedKb = savedMod.kbs.find(k => k.id === masterKb.id);
+          if (!savedKb) return masterKb;
+          
+          return {
+            ...masterKb, // Content dari Master
+            isCompleted: savedKb.isCompleted, // Status dari Saved
+            resumeContent: savedKb.resumeContent // Resume user dari Saved
+          };
+        })
+      };
+    });
 
     return {
-      ...seedCourse, // Keep structure (name, teacher, etc) from SEED
-      modules: seedCourse.modules.map(seedMod => {
-        const savedMod = savedCourse.modules.find(m => m.id === seedMod.id);
-        
-        // If this module is new (e.g. UKBM 2), return seed version
-        if (!savedMod) return seedMod;
-
-        return {
-          ...seedMod, // Keep structure (title, content questions) from SEED
-          // Restore Progress from SAVED
-          diagnosticSubmitted: savedMod.diagnosticSubmitted,
-          tugasSubmitted: savedMod.tugasSubmitted,
-          tugasFile: savedMod.tugasFile,
-          tugasContent: savedMod.tugasContent, // Restore text content
-          summativeSubmitted: savedMod.summativeSubmitted,
-          summativeScore: savedMod.summativeScore,
-          isRemedial: savedMod.isRemedial,
-          remedialAttemptCount: savedMod.remedialAttemptCount ?? 0,
-          
-          // Restore scores
-          resumeScore: savedMod.resumeScore ?? seedMod.resumeScore,
-          tugasScore: savedMod.tugasScore ?? seedMod.tugasScore,
-          keaktifanScore: savedMod.keaktifanScore ?? seedMod.keaktifanScore,
-
-          kbs: seedMod.kbs.map(seedKb => {
-            const savedKb = savedMod.kbs.find(k => k.id === seedKb.id);
-            if (!savedKb) return seedKb;
-            
-            return {
-              ...seedKb, // Keep structure (content, timer) from SEED
-              isCompleted: savedKb.isCompleted, // Restore completion status
-              resumeContent: savedKb.resumeContent // Restore resume text
-            };
-          })
-        };
-      })
+        ...masterCourse,
+        modules: mergedModules
     };
   });
 };
 
-// --- API Service ---
-
-// Simulate network delay for local
-const apiDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-/**
- * Seeds localStorage with mock data.
- */
 export const initializeData = (): void => {
   const storedVersion = getLocalData<string>(DATA_VERSION_KEY);
-  
   if (storedVersion !== CURRENT_DATA_VERSION) {
-    console.log(`Verison update (${CURRENT_DATA_VERSION}). Refreshing Seed Data structure.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
-    // Note: We do NOT force reset User here to avoid logging them out unexpectedly
   }
 };
 
-/**
- * FETCH USER (GET SESSION)
- */
 export const getUser = async (): Promise<User | null> => {
   await apiDelay(200);
-  // Just return what is in local storage (Session)
-  const user = getLocalData<User>(USER_KEY);
-  return user;
+  return getLocalData<User>(USER_KEY);
 };
 
-/**
- * GET COURSES
- */
+// --- GET COURSES (CORE LOGIC) ---
 export const getCourses = async (): Promise<Course[]> => {
-  let savedProgress: Course[] | null = null;
   const user = getLocalData<User>(USER_KEY);
+  
+  // 1. Ambil MASTER CONTENT (Definisi Mapel & UKBM dari Guru)
+  let masterCourses: Course[] = getLocalData<Course[]>(MASTER_COURSES_KEY) || MOCK_COURSES;
+  
+  if (GOOGLE_SCRIPT_URL) {
+      try {
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'getMasterCourses' })
+          });
+          const result = await response.json();
+          if (result.success && result.masterCourses && result.masterCourses.length > 0) {
+              masterCourses = result.masterCourses;
+              // Cache master courses
+              setLocalData(MASTER_COURSES_KEY, masterCourses);
+          }
+      } catch (e) {
+          console.warn("Gagal fetch Master Courses, menggunakan cache/mock.");
+      }
+  }
 
-  // 1. Try Cloud (Ambil Progress dari Sheet 'Progress' berdasarkan userId)
+  // 2. Ambil STUDENT PROGRESS (Nilai & Status)
+  let savedProgress: Course[] = [];
   if (GOOGLE_SCRIPT_URL && user) {
     try {
        const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ 
-            action: 'getProgress', // Action baru khusus ambil progress
+            action: 'getProgress',
             userId: user.id 
         })
       });
       const data = await response.json();
-      
-      // Backend returns { success: true, savedProgress: [ ... ] }
-      if (data.success && data.savedProgress && Array.isArray(data.savedProgress)) {
-          console.log("Cloud progress synced.");
+      if (data.success && data.savedProgress) {
           savedProgress = data.savedProgress;
       }
     } catch (e) {
-      console.warn("Failed to sync progress from cloud, using local");
+      console.warn("Gagal fetch progress, menggunakan local.");
     }
   }
-
-  // 2. Try LocalStorage if Cloud failed or empty
-  if (!savedProgress || savedProgress.length === 0) {
-      savedProgress = getLocalData<Course[]>(COURSES_KEY);
+  
+  // Jika cloud fail/kosong, cek local
+  if (savedProgress.length === 0) {
+      savedProgress = getLocalData<Course[]>(COURSES_KEY) || [];
   }
 
-  // 3. MERGE: Seed Data (Structure) + Saved Progress (Status)
-  const finalCourses = savedProgress 
-    ? mergeCourseProgress(MOCK_COURSES, savedProgress)
-    : MOCK_COURSES;
+  // 3. MERGE: Master Structure + Student Progress
+  let finalCourses = mergeCourseProgress(masterCourses, savedProgress);
 
-  // Update Local Storage with the merged fresh result
+  // 4. FILTERING: Tampilkan hanya mapel yang sesuai kelas siswa
+  if (user && user.role === 'STUDENT' && user.className) {
+      finalCourses = finalCourses.filter(c => c.className === user.className);
+  }
+
+  // Simpan hasil merge ke local agar UI cepat
   setLocalData(COURSES_KEY, finalCourses);
   
   return finalCourses;
 };
 
+// --- TEACHER: CREATE MODULE (SAVE TO CLOUD) ---
+export const createModule = async (courseId: string, title: string, overview: string): Promise<Course[]> => {
+    // 1. Ambil Data MASTER terbaru (agar tidak menimpa modul orang lain secara tidak sengaja)
+    let currentCourses = getLocalData<Course[]>(COURSES_KEY) || MOCK_COURSES;
+
+    const newModuleId = `mod-${Date.now()}`;
+    const newKBId = `kb-${Date.now()}-1`;
+
+    // 2. Update Struktur Course di Memory Lokal
+    const updatedCourses = currentCourses.map(c => {
+        if (c.id === courseId) {
+            const newModule: Module = {
+                id: newModuleId,
+                title: title,
+                subject: c.name,
+                order: c.modules.length + 1,
+                availableAt: new Date().toISOString(),
+                diagnosticSubmitted: false, // Default state
+                tugasSubmitted: false,
+                summativeSubmitted: false,
+                summativeScore: 0,
+                isRemedial: false,
+                remedialAttemptCount: 0,
+                tugasQuestion: overview,
+                tugasContent: '',
+                kbs: [
+                    {
+                        id: newKBId,
+                        title: `Kegiatan Belajar 1: Pendahuluan ${title}`,
+                        order: 1,
+                        content: `Materi pendahuluan untuk ${title}. Silakan pelajari konsep dasar sebelum melanjutkan ke tugas analisis.`,
+                        estimatedTime: 300, 
+                        isCompleted: false,
+                        resumeContent: ''
+                    }
+                ]
+            };
+            return { ...c, modules: [...c.modules, newModule] };
+        }
+        return c;
+    });
+
+    // 3. Simpan ke Local Storage (Optimistic Update)
+    setLocalData(COURSES_KEY, updatedCourses);
+
+    // 4. KIRIM KE CLOUD (Sheet 'Courses')
+    // Kita harus mencari object course yang diubah untuk dikirim
+    const changedCourse = updatedCourses.find(c => c.id === courseId);
+
+    if (GOOGLE_SCRIPT_URL && changedCourse) {
+        try {
+            // Bersihkan data progress siswa dari object sebelum disimpan sebagai Master
+            // (Kita hanya ingin menyimpan struktur modul, bukan nilai siswa yg sedang login)
+            const cleanModules = changedCourse.modules.map(m => ({
+                id: m.id,
+                title: m.title,
+                subject: m.subject,
+                order: m.order,
+                availableAt: m.availableAt,
+                tugasQuestion: m.tugasQuestion,
+                // Reset student states
+                diagnosticSubmitted: false,
+                tugasSubmitted: false,
+                summativeSubmitted: false,
+                summativeScore: 0,
+                tugasContent: '',
+                tugasScore: 0,
+                resumeScore: 0,
+                keaktifanScore: 0,
+                kbs: m.kbs.map(k => ({
+                    id: k.id,
+                    title: k.title,
+                    order: k.order,
+                    content: k.content,
+                    estimatedTime: k.estimatedTime,
+                    isCompleted: false, // Reset
+                    resumeContent: ''   // Reset
+                }))
+            }));
+
+            const courseToSend = {
+                ...changedCourse,
+                modules: cleanModules
+            };
+
+            await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'saveCourseContent',
+                    course: courseToSend
+                })
+            });
+            console.log("Master UKBM saved to Cloud.");
+        } catch (e) {
+            console.error("Gagal menyimpan Master UKBM ke Cloud", e);
+            alert("Gagal menyimpan ke server. Data hanya tersimpan lokal.");
+        }
+    }
+
+    return updatedCourses;
+};
+
 export const updateUser = async (updatedUser: User): Promise<User> => {
-    // 1. Update Local Storage Immediately (Optimistic UI)
     setLocalData(USER_KEY, updatedUser);
 
-    // 2. Send to Cloud (Spreadsheet 'Users')
     if (GOOGLE_SCRIPT_URL) {
       try {
-        // PENTING: Kita memisahkan logic.
-        // learningProgress dihapus dari object user sebelum dikirim ke Sheet Users
-        // agar tidak membebani Sheet Users.
         const { learningProgress, ...userToSend } = updatedUser;
-        
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
+        await fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
-            action: 'updateUser', // Masuk ke Sheet 'Users'
+            action: 'updateUser',
             user: userToSend
           })
         });
-
-        // Validasi respon dari server
-        const result = await response.json();
-        if (result.success) {
-            console.log("Database Profil (termasuk Email) berhasil diperbarui di Cloud.");
-        } else {
-            console.error("Gagal memperbarui Database:", result.message);
-        }
-
       } catch (e) {
-        console.error("Cloud update failed (Network Error)", e);
+        console.error("Cloud update failed", e);
       }
-    } else {
-        await apiDelay(300);
     }
-
     return updatedUser;
 };
 
 // --- SYNC HELPER ---
 const syncToCloud = async (courses: Course[]) => {
-  // Only sync if logged in user is a STUDENT
   const user = getLocalData<User>(USER_KEY);
+  // Hanya siswa yang perlu menyimpan progress pengerjaan
   if (user && user.role !== 'STUDENT') return; 
 
   if (GOOGLE_SCRIPT_URL && user) {
     try {
-      // Kita kirim data ke Sheet 'Progress'
       await fetch(GOOGLE_SCRIPT_URL, {
          method: 'POST',
          body: JSON.stringify({
-           action: 'updateProgress', // Masuk ke Sheet 'Progress'
-           userId: user.id,          // Key penghubung
+           action: 'updateProgress', 
+           userId: user.id,          
            courses: courses 
          })
       });
-      console.log("Progress synced to cloud");
     } catch (e) { console.error("Background sync failed", e); }
   }
 };
 
+// --- STUDENT ACTIONS ---
 
 export const updateKBCompletion = async (courseId: string, kbId: string, resumeContent?: string): Promise<Course[]> => {
   const courses = await getCourses();
@@ -322,11 +383,8 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
       return {
         ...course,
         modules: course.modules.map(module => {
-           // Cek apakah KB ini ada di dalam modul ini
            const targetKbIndex = module.kbs.findIndex(k => k.id === kbId);
-           
            if (targetKbIndex !== -1) {
-               // Update status KB
                const updatedKBs = module.kbs.map(kb => {
                 if (kb.id === kbId) {
                   return { 
@@ -338,9 +396,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
                 return kb;
               });
 
-              // --- AUTO-GRADING LOGIC (DEMO ONLY) ---
-              // Karena belum ada Guru, sistem memberi nilai otomatis agar progress bar berjalan.
-              
               return {
                   ...module,
                   kbs: updatedKBs,
@@ -348,7 +403,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
                   keaktifanScore: module.keaktifanScore || 90
               };
            }
-           
            return module;
         }),
       };
@@ -363,7 +417,6 @@ export const updateKBCompletion = async (courseId: string, kbId: string, resumeC
 
 export const resetKBCompletion = async (courseId: string, kbId: string): Promise<Course[]> => {
   const courses = await getCourses();
-  
   const updatedCourses = courses.map(course => {
     if (course.id === courseId) {
       return {
@@ -372,11 +425,7 @@ export const resetKBCompletion = async (courseId: string, kbId: string): Promise
           ...module,
           kbs: module.kbs.map(kb => {
             if (kb.id === kbId) {
-              return { 
-                ...kb, 
-                isCompleted: false,
-                resumeContent: '' // Clear resume on reset
-              }; 
+              return { ...kb, isCompleted: false, resumeContent: '' }; 
             }
             return kb;
           }),
@@ -385,7 +434,6 @@ export const resetKBCompletion = async (courseId: string, kbId: string): Promise
     }
     return course;
   });
-
   setLocalData(COURSES_KEY, updatedCourses);
   syncToCloud(updatedCourses);
   return updatedCourses;
@@ -424,10 +472,8 @@ export const updateTugasSubmission = async (courseId: string, moduleId: string, 
                       return { 
                         ...module, 
                         tugasSubmitted: true,
-                        tugasContent: content, // Save the text content
-                        tugasFile: 'analysis-hots.txt', // Dummy file name for legacy compatibility
-                        // --- AUTO-GRADING LOGIC (DEMO ONLY) ---
-                        // Beri nilai tugas 95 saat dikumpulkan
+                        tugasContent: content, 
+                        tugasFile: 'analysis-hots.txt',
                         tugasScore: 95
                       };
                   }
@@ -451,17 +497,11 @@ export const updateSummativeScore = async (courseId: string, moduleId: string, s
               ...course,
               modules: course.modules.map(module => {
                   if (module.id === moduleId) {
-                      // REMEDIAL LOGIC: Cap Score at KKTP (84) if it's a remedial attempt
                       let finalScore = score;
                       if (isRemedialAttempt) {
                           if (finalScore > KKTP) {
                               finalScore = KKTP;
                           }
-                          // RULE: Take the larger of the two remedials
-                          // If there was a previous score (which was presumably a remedial score or initial),
-                          // we compare. 
-                          // NOTE: isRemedial is true means we are submitting a remedial result.
-                          // previous 'summativeScore' holds the best score so far.
                           const previousScore = module.summativeScore || 0;
                           finalScore = Math.max(finalScore, previousScore);
                       }
@@ -471,7 +511,6 @@ export const updateSummativeScore = async (courseId: string, moduleId: string, s
                         summativeSubmitted: true,
                         summativeScore: finalScore,
                         isRemedial: isRemedialAttempt
-                        // Note: remedialAttemptCount is NOT updated here, it was updated at startRemedial
                       };
                   }
                   return module;
@@ -496,9 +535,8 @@ export const resetSummativeForRemedial = async (courseId: string, moduleId: stri
                   if (module.id === moduleId) {
                       return { 
                         ...module, 
-                        summativeSubmitted: false, // Reset status to allow retake
+                        summativeSubmitted: false,
                         isRemedial: true,
-                        // Increment Attempt Count
                         remedialAttemptCount: (module.remedialAttemptCount || 0) + 1
                       };
                   }

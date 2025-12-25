@@ -14,6 +14,11 @@ import CoursesPage from './pages/CoursesPage';
 import GradesPage from './pages/GradesPage';
 import AssignmentUpload from './pages/AssignmentUpload';
 import LoginPage from './pages/LoginPage';
+// New Teacher Pages
+import TeacherMonitoring from './pages/TeacherMonitoring';
+import ContentManagement from './pages/ContentManagement';
+import TeacherGrading from './pages/TeacherGrading';
+
 import * as api from './services/api';
 import { User, Course } from './types';
 
@@ -69,6 +74,12 @@ const AppContent: React.FC = () => {
   };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  // Helper to refresh courses manually (passed to child components)
+  const refreshCourses = async () => {
+      const updatedCourses = await api.getCourses();
+      setCourses(updatedCourses);
+  };
 
   const handleCompleteKB = async (courseId: string, kbId: string, resumeContent?: string) => {
     const updatedCourses = await api.updateKBCompletion(courseId, kbId, resumeContent);
@@ -128,8 +139,8 @@ const AppContent: React.FC = () => {
   // Logic: Check if the selected semester matches the user's active semester
   const isActiveSemester = user.semester === selectedSemester;
   
-  // Logic: View Lock
-  const isViewLocked = user.role === 'STUDENT' && !isActiveSemester;
+  // Logic: View Lock (Updated for STUDENT AND TEACHER)
+  const isViewLocked = (user.role === 'STUDENT' || user.role === 'TEACHER') && !isActiveSemester;
   const isProfileLocked = !user.profileComplete;
 
   // --- KIOSK MODE CHECK (EXAM MODE) ---
@@ -178,7 +189,7 @@ const AppContent: React.FC = () => {
                     <div className="bg-white/90 p-6 rounded-2xl shadow-2xl text-center border-2 border-slate-200">
                         <i className="fa-solid fa-lock text-4xl text-slate-400 mb-4"></i>
                         <h2 className="text-xl font-bold text-slate-800">Arsip Semester</h2>
-                        <p className="text-sm text-slate-500 mt-2">Anda sedang melihat data periode yang tidak aktif.<br/>Kembali ke semester aktif untuk melanjutkan belajar.</p>
+                        <p className="text-sm text-slate-500 mt-2">Anda sedang melihat data periode yang tidak aktif.<br/>Kembali ke semester aktif untuk melanjutkan aktivitas.</p>
                     </div>
                 </div>
             )}
@@ -202,8 +213,8 @@ const AppContent: React.FC = () => {
                     element={<ProfileGate user={user} onProfileUpdate={handleProfileUpdate} onLogout={handleLogout} startOnPasswordChange={true} />} 
                   />
 
-                  {/* STUDENT SPECIFIC ROUTES */}
-                  {user.role === 'STUDENT' && (
+                  {/* SHARED LEARNING ROUTES (Accessible by STUDENT & TEACHER) */}
+                  {(user.role === 'STUDENT' || user.role === 'TEACHER') && (
                     <>
                         <Route path="/courses" element={<CoursesPage courses={courses} />} />
                         <Route path="/course/:id" element={<CourseDetail courses={courses} />} />
@@ -220,6 +231,12 @@ const AppContent: React.FC = () => {
                             element={<SummativeTest courses={courses} onCompleteSummative={handleSummativeScore} onStartRemedial={handleRemedialStart} />} 
                         />
                         <Route path="/test/diagnostik/:courseId/:moduleId" element={<DiagnosticTest courses={courses} onCompleteDiagnostic={handleDiagnosticComplete} />} />
+                    </>
+                  )}
+
+                  {/* STUDENT ONLY ROUTES */}
+                  {user.role === 'STUDENT' && (
+                    <>
                         <Route path="/grades" element={<GradesPage courses={courses} />} />
                         <Route path="/calendar" element={<ComingSoon title="Jadwal Pacing" icon="fa-calendar-days" />} />
                     </>
@@ -228,9 +245,11 @@ const AppContent: React.FC = () => {
                   {/* TEACHER / SUPERVISOR / ADMIN ROUTES */}
                   {user.role !== 'STUDENT' && (
                     <>
-                        <Route path="/monitoring" element={<ComingSoon title="Monitoring Siswa" icon="fa-desktop" />} />
-                        <Route path="/content-mgmt" element={<ComingSoon title="Kelola Modul & KB" icon="fa-pen-to-square" />} />
-                        <Route path="/grading" element={<ComingSoon title="Input Nilai Manual" icon="fa-marker" />} />
+                        {/* UPDATE: Pass 'user' prop to these components */}
+                        <Route path="/monitoring" element={<TeacherMonitoring courses={courses} userRole={user.role} currentUser={user} />} />
+                        <Route path="/content-mgmt" element={<ContentManagement courses={courses} currentUser={user} onRefresh={refreshCourses} />} />
+                        <Route path="/grading" element={<TeacherGrading courses={courses} currentUser={user} />} />
+                        
                         <Route path="/teacher-perf" element={<ComingSoon title="Kinerja Guru" icon="fa-user-tie" />} />
                         <Route path="/users" element={<ComingSoon title="Manajemen User" icon="fa-users-gear" />} />
                         <Route path="/settings" element={<ComingSoon title="Pengaturan App" icon="fa-gears" />} />

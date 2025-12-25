@@ -15,7 +15,7 @@ const ComingSoon: React.FC<ComingSoonProps> = ({ title, icon }) => {
       </div>
       <h2 className="text-2xl font-black text-slate-800 mb-2">{title}</h2>
       <p className="text-slate-500 max-w-md text-center mb-8">
-        Modul fitur ini sedang dalam tahap sinkronisasi data kurikulum MTsN 4 Jombang. Silakan cek kembali dalam beberapa saat.
+        Fitur ini sedang dalam tahap sinkronisasi data kurikulum MTsN 4 Jombang. Silakan cek kembali dalam beberapa saat.
       </p>
       <Link 
         to="/" 

@@ -83,7 +83,7 @@ const AssignmentUpload: React.FC<AssignmentUploadProps> = ({ courses, onSubmitAs
                 <i className="fa-solid fa-quote-right absolute top-4 right-4 text-6xl text-white opacity-10"></i>
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pertanyaan Analisis</h4>
                 <p className="text-lg font-medium leading-relaxed font-serif">
-                    "{module.tugasQuestion || 'Jelaskan hubungan antar materi dalam modul ini dan berikan contoh penerapannya dalam kehidupan nyata.'}"
+                    "{module.tugasQuestion || 'Jelaskan hubungan antar materi dalam UKBM ini dan berikan contoh penerapannya dalam kehidupan nyata.'}"
                 </p>
              </div>
 
@@ -121,7 +121,7 @@ const AssignmentUpload: React.FC<AssignmentUploadProps> = ({ courses, onSubmitAs
 
                 <div className="flex space-x-4 pt-4">
                     <Link to={`/course/${courseId}`} className="px-8 py-4 text-center bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors">
-                        Kembali ke Modul
+                        Kembali ke UKBM
                     </Link>
                     
                     {!isCompleted && (

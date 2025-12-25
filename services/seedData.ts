@@ -3,6 +3,7 @@ import { User, UserRole, Course } from '../types';
 
 // --- AUTH DATA ---
 export const MOCK_AUTH_USERS: User[] = [
+  // Siswa 1 (Kelas VIII-R - Sesuai Guru)
   {
     id: 'std-001',
     name: 'Ahmad Fauzi',
@@ -10,13 +11,14 @@ export const MOCK_AUTH_USERS: User[] = [
     role: UserRole.STUDENT,
     profileComplete: true,
     avatar: 'https://ui-avatars.com/api/?name=Ahmad+Fauzi&background=10b981&color=fff',
-    className: 'Kelas 8-A',
-    semester: 'Semester III',
+    className: 'VIII-R', // Updated to match Teacher's class
+    semester: 'Ganjil 2024/2025',
     nisn: '1234567890',
     address: 'Jombang',
     parentName: 'Budi',
     parentPhone: '08123'
   },
+  // Guru Mapel Matematika
   {
     id: 'tch-001',
     name: 'Ust. Muhammad Ali, M.Pd',
@@ -24,9 +26,11 @@ export const MOCK_AUTH_USERS: User[] = [
     role: UserRole.TEACHER,
     profileComplete: true,
     avatar: 'https://ui-avatars.com/api/?name=Muhammad+Ali&background=6366f1&color=fff',
-    className: 'Wali Kelas 8-A',
-    semester: 'Ganjil 2024/2025'
+    className: 'VIII-R', // Wali Kelas VIII-R
+    semester: 'Ganjil 2024/2025',
+    subject: 'Matematika' // MENGIKAT GURU INI DENGAN MAPEL MATEMATIKA
   },
+  // Kepala Sekolah
   {
     id: 'spv-001',
     name: 'Drs. H. Purnomo (Kepala)',
@@ -36,6 +40,7 @@ export const MOCK_AUTH_USERS: User[] = [
     avatar: 'https://ui-avatars.com/api/?name=Purnomo&background=f59e0b&color=fff',
     semester: 'Ganjil 2024/2025'
   },
+  // Admin
   {
     id: 'adm-001',
     name: 'Super Admin IT',
@@ -112,10 +117,12 @@ export const MOCK_SUMMATIVE_QUESTIONS = [
 ];
 
 // Helper to create basic structure for other courses
-const createBasicCourse = (id: string, name: string, teacherId: string, moduleTitle: string): Course => ({
+// Default Class Name set to 'VIII-R' for demo purposes, but in real app would be dynamic
+const createBasicCourse = (id: string, name: string, teacherId: string, moduleTitle: string, className: string = 'VIII-R'): Course => ({
   id,
   name,
   teacherId,
+  className,
   modules: [
     {
       id: `mod-${id}-1`,
@@ -150,10 +157,12 @@ const createBasicCourse = (id: string, name: string, teacherId: string, moduleTi
 });
 
 export const MOCK_COURSES: Course[] = [
+  // 1. Course Matematika (Milik tch-001) - KHUSUS KELAS VIII-R
   {
     id: 'course-math',
     name: 'Matematika',
-    teacherId: 'teacher-001',
+    teacherId: 'tch-001', // LINKED TO TEACHER 1
+    className: 'VIII-R', // LINKED TO STUDENT CLASS
     modules: [
       {
         id: 'mod-1',
@@ -233,20 +242,24 @@ export const MOCK_COURSES: Course[] = [
       }
     ]
   },
-  createBasicCourse('course-ipa', 'Ilmu Pengetahuan Alam', 'teacher-002', 'Sistem Pencernaan'),
-  createBasicCourse('course-ips', 'Ilmu Pengetahuan Sosial', 'teacher-003', 'Mobilitas Sosial'),
-  createBasicCourse('course-bindo', 'Bahasa Indonesia', 'teacher-004', 'Teks Eksplanasi'),
-  createBasicCourse('course-bing', 'Bahasa Inggris', 'teacher-005', 'Recount Text'),
-  createBasicCourse('course-qh', 'Al-Qur\'an Hadis', 'teacher-006', 'Hukum Bacaan Mad'),
-  createBasicCourse('course-aa', 'Akidah Akhlak', 'teacher-007', 'Adab Kepada Orang Tua'),
-  createBasicCourse('course-fikih', 'Fikih', 'teacher-008', 'Sujud Sahwi'),
-  createBasicCourse('course-ski', 'Sejarah Kebudayaan Islam', 'teacher-009', 'Dinasti Abbasiyah'),
-  createBasicCourse('course-barab', 'Bahasa Arab', 'teacher-010', 'At-Ta\'aruf'),
-  createBasicCourse('course-pkn', 'PPKn', 'teacher-011', 'Tata Tertib Sekolah'),
-  createBasicCourse('course-pjok', 'PJOK', 'teacher-012', 'Permainan Bola Besar'),
-  createBasicCourse('course-sb', 'Seni Budaya', 'teacher-013', 'Menggambar Ilustrasi'),
-  createBasicCourse('course-prakarya', 'Prakarya', 'teacher-014', 'Kerajinan Bahan Lunak'),
-  createBasicCourse('course-info', 'Informatika', 'teacher-015', 'Berpikir Komputasional')
+  // 2. Course Tambahan: Matematika Peminatan (Juga Milik tch-001 untuk demo filtering)
+  createBasicCourse('course-math-adv', 'Matematika Peminatan', 'tch-001', 'Logika Matematika', 'VIII-R'),
+
+  // 3. Course Lain (Bukan Milik tch-001) - Dianggap juga untuk VIII-R agar dashboard penuh
+  createBasicCourse('course-ipa', 'Ilmu Pengetahuan Alam', 'tch-002', 'Sistem Pencernaan', 'VIII-R'),
+  createBasicCourse('course-ips', 'Ilmu Pengetahuan Sosial', 'tch-003', 'Mobilitas Sosial', 'VIII-R'),
+  createBasicCourse('course-bindo', 'Bahasa Indonesia', 'tch-004', 'Teks Eksplanasi', 'VIII-R'),
+  createBasicCourse('course-bing', 'Bahasa Inggris', 'tch-005', 'Recount Text', 'VIII-R'),
+  createBasicCourse('course-qh', 'Al-Qur\'an Hadis', 'tch-006', 'Hukum Bacaan Mad', 'VIII-R'),
+  createBasicCourse('course-aa', 'Akidah Akhlak', 'tch-007', 'Adab Kepada Orang Tua', 'VIII-R'),
+  createBasicCourse('course-fikih', 'Fikih', 'tch-008', 'Sujud Sahwi', 'VIII-R'),
+  createBasicCourse('course-ski', 'Sejarah Kebudayaan Islam', 'tch-009', 'Dinasti Abbasiyah', 'VIII-R'),
+  createBasicCourse('course-barab', 'Bahasa Arab', 'tch-010', 'At-Ta\'aruf', 'VIII-R'),
+  createBasicCourse('course-pkn', 'PPKn', 'tch-011', 'Tata Tertib Sekolah', 'VIII-R'),
+  createBasicCourse('course-pjok', 'PJOK', 'tch-012', 'Permainan Bola Besar', 'VIII-R'),
+  createBasicCourse('course-sb', 'Seni Budaya', 'tch-013', 'Menggambar Ilustrasi', 'VIII-R'),
+  createBasicCourse('course-prakarya', 'Prakarya', 'tch-014', 'Kerajinan Bahan Lunak', 'VIII-R'),
+  createBasicCourse('course-info', 'Informatika', 'tch-015', 'Berpikir Komputasional', 'VIII-R')
 ];
 
 export const GRADE_WEIGHTS = {

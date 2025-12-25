@@ -13,8 +13,9 @@ export interface User {
   profileComplete: boolean;
   avatar?: string;
   email: string;
-  className?: string; // e.g. "8-A"
+  className?: string; // e.g. "VIII-R"
   semester?: string;  // e.g. "Ganjil 2024/2025"
+  subject?: string;   // New: Mata Pelajaran yang diampu (Khusus Guru)
   // New fields for Profile Persistence
   nisn?: string;
   address?: string;
@@ -65,6 +66,7 @@ export interface Course {
   id: string;
   name: string;
   teacherId: string;
+  className: string; // NEW: Menentukan Course ini untuk kelas apa (misal: "VIII-R")
   modules: Module[];
 }
 
