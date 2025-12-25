@@ -39,9 +39,9 @@ const CourseDetail: React.FC<CourseDetailProps> = ({ courses }) => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <nav className="flex items-center space-x-2 text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">
-            <Link to="/" className="hover:text-emerald-600">Dashboard</Link>
+            <Link to="/courses" className="hover:text-emerald-600">Mata Pelajaran</Link>
             <i className="fa-solid fa-chevron-right text-[8px]"></i>
-            <span>{course.name}</span>
+            <span className="text-slate-600">{course.name}</span>
           </nav>
           <h1 className="text-3xl font-black text-slate-800">{course.name}</h1>
           <p className="text-slate-500">Oleh: <span className="font-semibold text-emerald-700">Ust. Muhammad Ali, M.Pd</span></p>
