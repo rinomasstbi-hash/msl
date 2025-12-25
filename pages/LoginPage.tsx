@@ -48,7 +48,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               />
             </div>
             <h1 className="text-3xl font-black text-white tracking-wide">AMANAH</h1>
-            <p className="text-emerald-200 text-sm font-medium mt-2 leading-relaxed px-4">
+            {/* Menggunakan font artistic (Dancing Script) dan ukuran lebih besar */}
+            <p className="text-emerald-100 text-xl font-artistic mt-1 leading-relaxed px-4 drop-shadow-sm">
               Aplikasi Manajemen Akademik, Nilai <br/> & Akhlak Harian
             </p>
           </div>
