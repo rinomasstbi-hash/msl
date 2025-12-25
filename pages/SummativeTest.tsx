@@ -52,6 +52,9 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [securityMessage, setSecurityMessage] = useState<string | null>(null);
 
+  // Mobile Nav State
+  const [showMobileGrid, setShowMobileGrid] = useState(false);
+
   if (!course || !module) {
     return <div>Ujian tidak ditemukan.</div>;
   }
@@ -448,7 +451,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
 
   // VIEW: QUESTION INTERFACE
   return (
-     <div ref={testContainerRef} className="w-full h-screen flex flex-col p-4 select-none bg-slate-100" onContextMenu={(e) => e.preventDefault()}>
+     <div ref={testContainerRef} className="w-full h-screen flex flex-col p-2 md:p-4 select-none bg-slate-100 overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
       
       {/* Security Overlay Warning */}
       {securityMessage && (
@@ -474,7 +477,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
       )}
       
       {isSubmitting && (
-           <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center backdrop-blur-sm fixed">
+           <div className="fixed inset-0 bg-white/90 z-[100] flex flex-col items-center justify-center backdrop-blur-sm">
               <i className="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
               <p className="font-bold text-slate-700">Mengenkripsi & Mengirim Jawaban...</p>
            </div>
@@ -508,24 +511,38 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
            </div>
         )}
 
+      {/* Mobile Grid Overlay Backdrop */}
+      {showMobileGrid && (
+        <div className="fixed inset-0 bg-black/50 z-[50] lg:hidden" onClick={() => setShowMobileGrid(false)}></div>
+      )}
+
       {/* Main Layout: Flex for Sidebar */}
-      <div className="flex flex-col lg:flex-row gap-6 h-full max-w-7xl mx-auto w-full">
+      <div className="flex flex-col lg:flex-row gap-4 h-full max-w-7xl mx-auto w-full overflow-hidden">
         
         {/* Left Column: Question Area */}
         <div className="flex-1 flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden h-full relative">
-            <div className="p-6 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
+            <div className="p-4 md:p-8 flex-1 overflow-y-auto custom-scrollbar">
                 
                 {/* Header Info */}
-                <div className="mb-6">
-                    <div className="flex justify-between items-center mb-4">
+                <div className="mb-4 md:mb-6">
+                    <div className="flex justify-between items-center mb-2 md:mb-4">
                         <div className="flex items-center space-x-3">
-                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Soal No.</span>
-                            <span className="text-3xl font-black text-indigo-600">{currentQuestionIndex + 1}</span>
+                            <span className="hidden md:inline text-xs font-bold text-slate-500 uppercase tracking-wider">Soal No.</span>
+                            <span className="text-2xl md:text-3xl font-black text-indigo-600">{currentQuestionIndex + 1}</span>
                             <span className="text-lg text-slate-300">/</span>
                             <span className="text-lg text-slate-400 font-bold">{questions.length}</span>
                         </div>
                         
                         <div className="flex items-center space-x-2">
+                             {/* Mobile Toggle Grid Button */}
+                             <button 
+                                onClick={() => setShowMobileGrid(true)}
+                                className="lg:hidden px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                             >
+                                <i className="fa-solid fa-table-cells mr-1"></i>
+                                <span className="text-xs font-bold">Daftar Soal</span>
+                             </button>
+
                              {/* Timer Display */}
                              <div className={`px-3 py-1.5 rounded-lg font-mono font-bold border flex items-center shadow-sm ${timeLeft < 300 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-slate-50 text-slate-700 border-slate-200'}`}>
                                 <i className="fa-solid fa-clock mr-2 text-xs"></i>
@@ -547,92 +564,102 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                 </div>
 
                 {/* Question Text */}
-                <div className="py-6 border-t border-slate-100 min-h-[120px]">
-                    <p className="text-lg font-medium text-slate-800 leading-relaxed select-none">
+                <div className="py-4 md:py-6 border-t border-slate-100 min-h-[100px]">
+                    <p className="text-base md:text-lg font-medium text-slate-800 leading-relaxed select-none">
                         {currentQuestion.q}
                     </p>
                 </div>
 
                 {/* Answer Options */}
-                <div className="space-y-3 mt-4">
+                <div className="space-y-3 mt-4 pb-4">
                     {currentQuestion.o.map((option, index) => (
                         <button
                         key={index}
                         onClick={() => handleSelectAnswer(index)}
-                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center space-x-4 group select-none ${
+                        className={`w-full text-left p-3 md:p-4 rounded-xl border-2 transition-all flex items-start space-x-3 md:space-x-4 group select-none ${
                             answers[currentQuestionIndex] === index
                             ? 'bg-indigo-50 border-indigo-500 text-indigo-800 shadow-md ring-1 ring-indigo-200'
                             : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-slate-50'
                         }`}
                         >
-                        <div className={`w-8 h-8 rounded-full border-2 flex-shrink-0 flex items-center justify-center font-bold text-sm transition-colors ${
+                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full border-2 flex-shrink-0 flex items-center justify-center font-bold text-xs md:text-sm transition-colors mt-0.5 ${
                             answers[currentQuestionIndex] === index ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-slate-300 text-slate-400 group-hover:border-indigo-300'
                         }`}>
                             {String.fromCharCode(65 + index)}
                         </div>
-                        <span className="font-medium">{option}</span>
+                        <span className="font-medium text-sm md:text-base leading-snug">{option}</span>
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Footer Navigation Controls */}
-            <div className="p-4 md:p-6 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-3 justify-between items-center">
+            <div className="p-3 md:p-6 bg-slate-50 border-t border-slate-200 flex gap-3 justify-between items-center shrink-0">
                 <button
                     onClick={handlePrev}
                     disabled={currentQuestionIndex === 0}
-                    className="flex-1 md:flex-none px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    className="flex-1 px-4 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm text-sm"
                 >
-                    <i className="fa-solid fa-chevron-left mr-2"></i>
-                    Sebelumnya
+                    <i className="fa-solid fa-chevron-left md:mr-2"></i>
+                    <span className="hidden md:inline">Sebelumnya</span>
                 </button>
 
                 <button
                     onClick={handleToggleFlag}
-                    className={`flex-1 md:flex-none px-6 py-3 rounded-xl font-bold transition-all shadow-sm border ${
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all shadow-sm border text-sm ${
                         flaggedQuestions[currentQuestionIndex] 
                         ? 'bg-amber-100 text-amber-700 border-amber-300' 
                         : 'bg-white text-slate-500 border-slate-200 hover:bg-amber-50 hover:text-amber-600'
                     }`}
                 >
-                    <i className={`fa-solid ${flaggedQuestions[currentQuestionIndex] ? 'fa-flag' : 'fa-regular fa-flag'} mr-2`}></i>
-                    Ragu-ragu
+                    <i className={`fa-solid ${flaggedQuestions[currentQuestionIndex] ? 'fa-flag' : 'fa-regular fa-flag'} md:mr-2`}></i>
+                    <span className="hidden md:inline">Ragu-ragu</span>
                 </button>
                 
                 {currentQuestionIndex === questions.length - 1 ? (
-                    <div className="flex-1 md:flex-none flex flex-col items-end">
-                        <button
-                            onClick={handleInitSubmit}
-                            disabled={!isAllAnswered || !isMinimumTimeMet}
-                            className="w-full md:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 flex items-center justify-center"
-                        >
-                            Kirim Jawaban
-                            <i className="fa-solid fa-paper-plane ml-2"></i>
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleInitSubmit}
+                        disabled={!isAllAnswered || !isMinimumTimeMet}
+                        className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 text-sm flex items-center justify-center"
+                    >
+                        <span>Kirim</span>
+                        <i className="fa-solid fa-paper-plane ml-2"></i>
+                    </button>
                 ) : (
                     <button
                         onClick={handleNext}
-                        disabled={answers[currentQuestionIndex] === -1 && !flaggedQuestions[currentQuestionIndex]} // Optional: force answer/flag before next
-                        className="flex-1 md:flex-none px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-all shadow-lg shadow-indigo-200"
+                        disabled={answers[currentQuestionIndex] === -1 && !flaggedQuestions[currentQuestionIndex]} 
+                        className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 transition-all shadow-lg shadow-indigo-200 text-sm"
                     >
-                        Selanjutnya
-                        <i className="fa-solid fa-chevron-right ml-2"></i>
+                        <span className="hidden md:inline">Selanjutnya</span>
+                        <i className="fa-solid fa-chevron-right md:ml-2"></i>
                     </button>
                 )}
             </div>
         </div>
 
         {/* Right Column: Navigation Grid Sidebar */}
-        <div className="w-full lg:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col overflow-hidden h-fit max-h-full">
-            <div className="p-4 border-b border-slate-100 bg-slate-50">
+        <div className={`
+            bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col overflow-hidden transition-all
+            lg:w-80 lg:h-auto lg:max-h-full lg:static
+            ${showMobileGrid 
+                ? 'fixed inset-4 bottom-auto z-[60] h-auto max-h-[80vh] shadow-2xl ring-4 ring-indigo-500/20' 
+                : 'hidden lg:flex'}
+        `}>
+            <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                 <h3 className="font-bold text-slate-700 flex items-center">
                     <i className="fa-solid fa-grip mr-2 text-indigo-500"></i>
                     Navigasi Soal
                 </h3>
+                <button 
+                    onClick={() => setShowMobileGrid(false)}
+                    className="lg:hidden w-8 h-8 flex items-center justify-center bg-white rounded-full text-slate-400 hover:text-red-500 transition-colors shadow-sm"
+                >
+                    <i className="fa-solid fa-xmark"></i>
+                </button>
             </div>
             
-            <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
+            <div className="p-4 overflow-y-auto custom-scrollbar flex-1 min-h-[200px] lg:min-h-0">
                 <div className="grid grid-cols-5 gap-2">
                     {questions.map((_, idx) => {
                         const isCurrent = idx === currentQuestionIndex;
@@ -653,7 +680,10 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                         return (
                             <button
                                 key={idx}
-                                onClick={() => setCurrentQuestionIndex(idx)}
+                                onClick={() => {
+                                    setCurrentQuestionIndex(idx);
+                                    setShowMobileGrid(false); // Close modal on mobile select
+                                }}
                                 className={`h-10 w-full rounded-lg text-sm font-bold border transition-all shadow-sm flex items-center justify-center ${bgClass} ${activeClass}`}
                             >
                                 {idx + 1}
@@ -663,7 +693,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                 </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-100 text-[10px] space-y-2">
+            <div className="p-4 bg-slate-50 border-t border-slate-100 text-[10px] space-y-2 shrink-0">
                 <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 rounded bg-blue-600 border border-blue-600"></div>
                     <span className="text-slate-500 font-bold">Sudah Dijawab</span>
