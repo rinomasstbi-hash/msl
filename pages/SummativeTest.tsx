@@ -284,10 +284,10 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
                              <div className="flex flex-col sm:flex-row justify-center gap-3">
                                  <Link 
                                     to={`/course/${courseId}`}
-                                    className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center"
+                                    className="px-6 py-3 bg-white border-2 border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 transition-all flex items-center justify-center shadow-sm"
                                  >
                                     <i className="fa-solid fa-arrow-left mr-2"></i>
-                                    Kembali
+                                    Kembali ke UKBM
                                  </Link>
                                  <button 
                                     onClick={handleStartRemedial}
@@ -439,7 +439,7 @@ const SummativeTest: React.FC<SummativeTestProps> = ({ courses, onCompleteSummat
             </button>
             <Link 
               to={`/course/${courseId}`}
-              className="inline-block text-slate-500 font-semibold text-sm hover:text-emerald-700 transition-colors"
+              className="w-full py-4 bg-slate-200 text-slate-700 rounded-xl font-bold text-lg hover:bg-slate-300 transition-all flex items-center justify-center"
             >
               Batalkan
             </Link>

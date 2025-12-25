@@ -39,15 +39,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             <i className="fa-solid fa-mosque text-[150px] absolute -right-10 -bottom-10 text-white"></i>
           </div>
           <div className="relative z-10">
-            <div className="w-24 h-24 bg-white rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg p-2">
+            {/* Background putih dihilangkan, ukuran disesuaikan agar proporsional */}
+            <div className="w-28 h-28 mx-auto flex items-center justify-center mb-2">
                <img 
                 src="https://mtsn4jombang.sch.id/wp-content/uploads/2025/08/cropped-LOGOMTSN4BARU_web.png" 
                 alt="Logo MTsN 4 Jombang" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain drop-shadow-lg"
               />
             </div>
             <h1 className="text-3xl font-black text-white tracking-wide">AMANAH</h1>
-            <p className="text-emerald-200 text-xs font-medium mt-2 leading-relaxed px-4">
+            <p className="text-emerald-200 text-sm font-medium mt-2 leading-relaxed px-4">
               Aplikasi Manajemen Akademik, Nilai <br/> & Akhlak Harian
             </p>
           </div>

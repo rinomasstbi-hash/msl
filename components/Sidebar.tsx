@@ -68,7 +68,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, isOpen, onClose, disabled = fal
           <img 
             src="https://mtsn4jombang.sch.id/wp-content/uploads/2025/08/cropped-LOGOMTSN4BARU_web.png" 
             alt="Logo MTsN 4 Jombang" 
-            className="w-10 h-10 object-contain bg-white rounded-lg p-1"
+            className="w-12 h-12 object-contain"
           />
           <div>
             <h1 className="font-bold text-lg leading-tight text-white tracking-wide">AMANAH</h1>
