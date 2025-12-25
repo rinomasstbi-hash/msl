@@ -271,7 +271,8 @@ export const createModule = async (courseId: string, title: string, overview: st
     setLocalData(COURSES_KEY, updatedCourses);
 
     // 4. KIRIM KE CLOUD (BACKGROUND PROCESS - FIRE AND FORGET)
-    // Kita TIDAK menggunakan 'await' disini agar UI tidak macet.
+    // PERBAIKAN: Kita TIDAK menggunakan 'await' disini.
+    // Fetch berjalan di background, function langsung return 'updatedCourses'.
     const changedCourse = updatedCourses.find(c => c.id === courseId);
 
     if (GOOGLE_SCRIPT_URL && changedCourse) {
@@ -306,14 +307,14 @@ export const createModule = async (courseId: string, title: string, overview: st
             modules: cleanModules
         };
 
-        // BACKGROUND FETCH (Promise not awaited)
+        // BACKGROUND SYNC: No Await
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify({
                 action: 'saveCourseContent',
                 course: courseToSend
             })
-        }).then(res => {
+        }).then(() => {
             console.log("Background Sync: UKBM Saved to Cloud");
         }).catch(err => {
             console.warn("Background Sync Failed (Offline Mode): Data saved locally only.");
@@ -324,12 +325,14 @@ export const createModule = async (courseId: string, title: string, overview: st
     return updatedCourses;
 };
 
+// --- UPDATE USER (OPTIMIZED) ---
 export const updateUser = async (updatedUser: User): Promise<User> => {
     setLocalData(USER_KEY, updatedUser);
 
     if (GOOGLE_SCRIPT_URL) {
       try {
         const { learningProgress, ...userToSend } = updatedUser;
+        // Background Sync: No Await
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
