@@ -3,13 +3,11 @@ import { User, Course, KKTP, Module } from '../types';
 import { MOCK_COURSES, MOCK_AUTH_USERS } from './seedData';
 
 // --- CONFIGURATION ---
-// PENTING: Paste URL Web App Google Apps Script Anda di sini.
-// Pastikan Anda sudah Deploy New Deployment > Who has access: Anyone > Copy URL baru.
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrpCVVsjzEsl0ZDfC6edOryiz7xkON4StYF8bXeypG5ZJJHxMAtPKr5SUGM3w6CBY/exec'; 
 
 const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
-const MASTER_COURSES_KEY = 'msl_master_courses'; // Cache for content definition
+const MASTER_COURSES_KEY = 'msl_master_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 const CURRENT_DATA_VERSION = '1.7'; 
 
@@ -42,7 +40,6 @@ const apiDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export const login = async (email: string, password: string): Promise<User | null> => {
   if (GOOGLE_SCRIPT_URL) {
       try {
-          // Timeout login 5 detik
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -168,7 +165,6 @@ export const getCourses = async (): Promise<Course[]> => {
   
   if (GOOGLE_SCRIPT_URL) {
       try {
-          // Timeout fetch master courses (3s) to prevent dashboard lag
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -185,7 +181,7 @@ export const getCourses = async (): Promise<Course[]> => {
               setLocalData(MASTER_COURSES_KEY, masterCourses);
           }
       } catch (e) {
-          console.warn("Gagal fetch Master Courses (Timeout/Offline), menggunakan cache local.");
+          console.warn("Using Local Master Courses due to timeout/error.");
       }
   }
 
@@ -211,7 +207,7 @@ export const getCourses = async (): Promise<Course[]> => {
           savedProgress = data.savedProgress;
       }
     } catch (e) {
-      console.warn("Gagal fetch progress, menggunakan local.");
+      console.warn("Using Local Progress due to timeout/error.");
     }
   }
   
@@ -229,7 +225,7 @@ export const getCourses = async (): Promise<Course[]> => {
   return finalCourses;
 };
 
-// --- TEACHER: CREATE MODULE (FIXED STUCK BUTTON) ---
+// --- TEACHER: CREATE MODULE (OPTIMIZED - FIRE AND FORGET) ---
 export const createModule = async (courseId: string, title: string, overview: string): Promise<Course[]> => {
     // 1. Ambil Data MASTER terbaru
     let currentCourses = getLocalData<Course[]>(COURSES_KEY) || MOCK_COURSES;
@@ -271,71 +267,60 @@ export const createModule = async (courseId: string, title: string, overview: st
         return c;
     });
 
-    // 3. Simpan ke Local Storage (Optimistic Update)
-    // Ini PENTING agar user langsung melihat perubahan meskipun internet mati
+    // 3. Simpan ke Local Storage (INSTANT UPDATE)
     setLocalData(COURSES_KEY, updatedCourses);
 
-    // 4. KIRIM KE CLOUD (Sheet 'Courses') dengan TIMEOUT
+    // 4. KIRIM KE CLOUD (BACKGROUND PROCESS - FIRE AND FORGET)
+    // Kita TIDAK menggunakan 'await' disini agar UI tidak macet.
     const changedCourse = updatedCourses.find(c => c.id === courseId);
 
     if (GOOGLE_SCRIPT_URL && changedCourse) {
-        // PERBAIKAN UTAMA: Tambahkan Timeout 3 Detik
-        // Jika Server Google Script macet > 3 detik, kita anggap sukses secara lokal saja (Offline Mode)
-        // Agar UI tidak Stuck di "Menyimpan..."
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const cleanModules = changedCourse.modules.map(m => ({
+            id: m.id,
+            title: m.title,
+            subject: m.subject,
+            order: m.order,
+            availableAt: m.availableAt,
+            tugasQuestion: m.tugasQuestion,
+            diagnosticSubmitted: false,
+            tugasSubmitted: false,
+            summativeSubmitted: false,
+            summativeScore: 0,
+            tugasContent: '',
+            tugasScore: 0,
+            resumeScore: 0,
+            keaktifanScore: 0,
+            kbs: m.kbs.map(k => ({
+                id: k.id,
+                title: k.title,
+                order: k.order,
+                content: k.content,
+                estimatedTime: k.estimatedTime,
+                isCompleted: false, 
+                resumeContent: ''   
+            }))
+        }));
 
-        try {
-            const cleanModules = changedCourse.modules.map(m => ({
-                id: m.id,
-                title: m.title,
-                subject: m.subject,
-                order: m.order,
-                availableAt: m.availableAt,
-                tugasQuestion: m.tugasQuestion,
-                diagnosticSubmitted: false,
-                tugasSubmitted: false,
-                summativeSubmitted: false,
-                summativeScore: 0,
-                tugasContent: '',
-                tugasScore: 0,
-                resumeScore: 0,
-                keaktifanScore: 0,
-                kbs: m.kbs.map(k => ({
-                    id: k.id,
-                    title: k.title,
-                    order: k.order,
-                    content: k.content,
-                    estimatedTime: k.estimatedTime,
-                    isCompleted: false, 
-                    resumeContent: ''   
-                }))
-            }));
+        const courseToSend = {
+            ...changedCourse,
+            modules: cleanModules
+        };
 
-            const courseToSend = {
-                ...changedCourse,
-                modules: cleanModules
-            };
-
-            await fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: 'saveCourseContent',
-                    course: courseToSend
-                }),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            console.log("Master UKBM saved to Cloud.");
-
-        } catch (e) {
-            // Kita CATCH errornya tapi TIDAK me-rethrow
-            // Agar fungsi tetap return updatedCourses dan UI bisa lanjut.
-            console.warn("Gagal menyimpan ke Cloud (Timeout/Offline). Data tersimpan lokal.");
-        }
+        // BACKGROUND FETCH (Promise not awaited)
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'saveCourseContent',
+                course: courseToSend
+            })
+        }).then(res => {
+            console.log("Background Sync: UKBM Saved to Cloud");
+        }).catch(err => {
+            console.warn("Background Sync Failed (Offline Mode): Data saved locally only.");
+        });
     }
 
-    // Selalu return updatedCourses agar UI terupdate
+    // 5. Langsung kembalikan hasil update agar UI refresh detik itu juga
     return updatedCourses;
 };
 
@@ -345,7 +330,6 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     if (GOOGLE_SCRIPT_URL) {
       try {
         const { learningProgress, ...userToSend } = updatedUser;
-        // Fire and forget (tidak await) agar UI cepat
         fetch(GOOGLE_SCRIPT_URL, {
           method: 'POST',
           body: JSON.stringify({
@@ -360,14 +344,12 @@ export const updateUser = async (updatedUser: User): Promise<User> => {
     return updatedUser;
 };
 
-// --- SYNC HELPER ---
 const syncToCloud = async (courses: Course[]) => {
   const user = getLocalData<User>(USER_KEY);
   if (user && user.role !== 'STUDENT') return; 
 
   if (GOOGLE_SCRIPT_URL && user) {
     try {
-      // Fire and forget
       fetch(GOOGLE_SCRIPT_URL, {
          method: 'POST',
          body: JSON.stringify({
@@ -380,7 +362,6 @@ const syncToCloud = async (courses: Course[]) => {
   }
 };
 
-// --- STUDENT ACTIONS ---
 export const updateKBCompletion = async (courseId: string, kbId: string, resumeContent?: string): Promise<Course[]> => {
   const courses = await getCourses();
   const updatedCourses = courses.map(course => {

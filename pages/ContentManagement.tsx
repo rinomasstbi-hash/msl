@@ -37,23 +37,33 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!selectedCourseId || !formData.title || !formData.overview) return;
+      
+      // Validation Check
+      if (!selectedCourseId) {
+          alert("Pilih Mata Pelajaran terlebih dahulu.");
+          return;
+      }
+      if (!formData.title || !formData.overview) {
+          alert("Mohon lengkapi Judul dan Deskripsi UKBM.");
+          return;
+      }
 
       setIsSaving(true);
       try {
-          // Call API to create module
+          // Call API to create module (Now Fire-and-Forget, so it's instant)
           await api.createModule(selectedCourseId, formData.title, formData.overview);
           
-          alert("UKBM berhasil ditambahkan! Siswa sekarang dapat melihat materi ini.");
+          alert("UKBM berhasil dibuat! Data tersimpan di perangkat dan akan disinkronkan ke Cloud.");
           setIsModalOpen(false);
           setFormData({ title: '', overview: '' });
           
-          // Trigger refresh in parent (App) so the list updates immediately
+          // Trigger refresh in parent (App)
           if (onRefresh) {
               onRefresh();
           }
       } catch (error) {
-          alert("Gagal menyimpan UKBM.");
+          console.error(error);
+          alert("Terjadi kesalahan saat menyimpan data lokal.");
       } finally {
           setIsSaving(false);
       }
@@ -136,7 +146,7 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                   
                   <form onSubmit={handleSubmit} className="p-6 space-y-4">
                       {/* Select Course if multiple */}
-                      {myCourses.length > 1 && (
+                      {myCourses.length > 0 ? (
                           <div className="space-y-1">
                               <label className="text-sm font-bold text-slate-700">Pilih Mata Pelajaran</label>
                               <select 
@@ -146,6 +156,10 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                               >
                                   {myCourses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                               </select>
+                          </div>
+                      ) : (
+                          <div className="bg-red-50 p-3 rounded-lg text-xs text-red-600 font-bold">
+                              Anda tidak memiliki akses sebagai Guru Pengampu mata pelajaran apapun.
                           </div>
                       )}
 
@@ -188,8 +202,8 @@ const ContentManagement: React.FC<ContentManagementProps> = ({ courses, currentU
                           </button>
                           <button 
                             type="submit" 
-                            disabled={isSaving}
-                            className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 shadow-lg flex items-center justify-center space-x-2"
+                            disabled={isSaving || myCourses.length === 0}
+                            className={`flex-1 py-3 rounded-xl font-bold shadow-lg flex items-center justify-center space-x-2 ${isSaving || myCourses.length === 0 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'}`}
                           >
                               {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-save"></i>}
                               <span>{isSaving ? 'Menyimpan...' : 'Simpan UKBM'}</span>
