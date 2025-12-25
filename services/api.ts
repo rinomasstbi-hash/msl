@@ -9,7 +9,9 @@ const USER_KEY = 'msl_user';
 const COURSES_KEY = 'msl_courses';
 const MASTER_COURSES_KEY = 'msl_master_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
-const CURRENT_DATA_VERSION = '1.7'; 
+
+// BUMP VERSION: Mengubah ke 1.8 untuk memaksa reset data di browser user
+const CURRENT_DATA_VERSION = '1.8'; 
 
 // --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
@@ -144,10 +146,19 @@ const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Cour
   });
 };
 
+// --- INITIALIZE DATA (CRITICAL FIX FOR ID MISMATCH) ---
 export const initializeData = (): void => {
   const storedVersion = getLocalData<string>(DATA_VERSION_KEY);
+  
+  // Jika versi data berubah (misal dari 1.7 ke 1.8), lakukan HARD RESET pada cache course.
+  // Ini penting agar struktur data baru (seperti teacherId) termuat dengan benar.
   if (storedVersion !== CURRENT_DATA_VERSION) {
+    console.log(`System Upgrade: ${storedVersion} -> ${CURRENT_DATA_VERSION}. Refreshing Data Cache.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
+    
+    // HAPUS Cache Lama agar getCourses mengambil ulang dari MOCK/Seed Data yang benar
+    window.localStorage.removeItem(COURSES_KEY);
+    window.localStorage.removeItem(MASTER_COURSES_KEY);
   }
 };
 
@@ -161,6 +172,7 @@ export const getCourses = async (): Promise<Course[]> => {
   const user = getLocalData<User>(USER_KEY);
   
   // 1. Ambil MASTER CONTENT
+  // Jika tidak ada di local (karena baru direset), ambil dari MOCK_COURSES
   let masterCourses: Course[] = getLocalData<Course[]>(MASTER_COURSES_KEY) || MOCK_COURSES;
   
   if (GOOGLE_SCRIPT_URL) {
