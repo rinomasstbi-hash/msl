@@ -10,8 +10,8 @@ const COURSES_KEY = 'msl_courses';
 const MASTER_COURSES_KEY = 'msl_master_courses';
 const DATA_VERSION_KEY = 'msl_data_version';
 
-// BUMP VERSION: Naik ke 3.0 untuk Force Structure Update
-const CURRENT_DATA_VERSION = '3.0'; 
+// BUMP VERSION: Naik ke 3.1 untuk memaksa data bersih dengan patching baru
+const CURRENT_DATA_VERSION = '3.1'; 
 
 // --- Helper functions ---
 const getLocalData = <T>(key: string): T | null => {
@@ -105,10 +105,7 @@ export const changePassword = async (oldPassword: string, newPassword: string): 
   return { success: false, message: "Mode Offline." };
 };
 
-// --- DATA MERGING STRATEGY (CRITICAL FIX) ---
-// Logika: Selalu gunakan Struktur MASTER (Seed) sebagai dasar.
-// Hanya ambil "Progress" (nilai, boolean selesai) dari LocalStorage.
-// Jangan biarkan LocalStorage menimpa teacherId atau struktur modul.
+// --- DATA MERGING STRATEGY ---
 const mergeCourseProgress = (masterCourses: Course[], savedProgressCourses: Course[]): Course[] => {
   return masterCourses.map(masterCourse => {
     // Cari apakah ada data progress tersimpan untuk mapel ini
@@ -168,7 +165,7 @@ export const initializeData = (): void => {
     console.log(`System Upgrade: ${storedVersion} -> ${CURRENT_DATA_VERSION}. Hard Refreshing Data.`);
     setLocalData(DATA_VERSION_KEY, CURRENT_DATA_VERSION);
     
-    // Hapus cache courses agar dipaksa rebuild dari Seed
+    // Hapus cache courses agar dipaksa rebuild
     window.localStorage.removeItem(COURSES_KEY);
     window.localStorage.removeItem(MASTER_COURSES_KEY);
   }
@@ -183,14 +180,11 @@ export const getUser = async (): Promise<User | null> => {
 export const getCourses = async (): Promise<Course[]> => {
   const user = getLocalData<User>(USER_KEY);
   
-  // 1. BASE STRUCTURE: SELALU DARI SEED (MOCK_COURSES)
-  // Kita tidak lagi mempercayai MASTER_COURSES_KEY dari LocalStorage untuk struktur dasar
-  // karena bisa jadi itu adalah data lama yang teacherId-nya kosong.
+  // 1. BASE STRUCTURE: START WITH MOCK (SEED) AS FALLBACK
   let baseStructure: Course[] = [...MOCK_COURSES]; 
   
   if (GOOGLE_SCRIPT_URL) {
       try {
-          // Coba fetch master terbaru dari cloud jika ada
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 2000); // Fast timeout
 
@@ -203,10 +197,37 @@ export const getCourses = async (): Promise<Course[]> => {
 
           const result = await response.json();
           if (result.success && result.masterCourses && result.masterCourses.length > 0) {
-              baseStructure = result.masterCourses;
+              let cloudCourses = result.masterCourses;
+
+              // --- HYBRID PATCHING START ---
+              // Masalah: Data cloud mungkin belum punya 'teacherId' atau 'className' yang benar.
+              // Solusi: Jika kosong, cari padanan di SEED DATA berdasarkan NAMA MAPEL dan ambil datanya.
+              cloudCourses = cloudCourses.map((cloudC: Course) => {
+                  // Cari course lokal yang namanya sama (case insensitive)
+                  const seedC = MOCK_COURSES.find(m => 
+                      m.name.trim().toLowerCase() === cloudC.name.trim().toLowerCase()
+                  );
+
+                  if (seedC) {
+                      // Patch data penting jika di cloud kosong/undefined
+                      return {
+                          ...cloudC,
+                          // Prioritas: Cloud > Seed. Tapi jika Cloud kosong, pakai Seed.
+                          teacherId: cloudC.teacherId || seedC.teacherId,
+                          className: cloudC.className || seedC.className,
+                          // Pastikan modul tidak hilang
+                          modules: (cloudC.modules && cloudC.modules.length > 0) ? cloudC.modules : seedC.modules
+                      };
+                  }
+                  return cloudC;
+              });
+              // --- HYBRID PATCHING END ---
+
+              baseStructure = cloudCourses;
           }
       } catch (e) {
           // Silent fail, use MOCK_COURSES
+          console.warn("Failed to fetch cloud courses, using local seed with patching.");
       }
   }
 
@@ -238,23 +259,20 @@ export const getCourses = async (): Promise<Course[]> => {
     }
   }
   
-  // Fallback ke LocalStorage jika cloud gagal/kosong
   if (savedProgress.length === 0) {
       savedProgress = getLocalData<Course[]>(COURSES_KEY) || [];
   }
 
-  // 3. MERGE: STRUKTUR SEED + PROGRESS LOCAL
+  // 3. MERGE: STRUKTUR (YANG SUDAH DIPATCH) + PROGRESS LOCAL
   let finalCourses = mergeCourseProgress(baseStructure, savedProgress);
 
   // 4. FILTERING UI
   // Jika Siswa: Filter sesuai kelasnya.
-  // Jika Guru/Admin: JANGAN DI FILTER DI API, kembalikan semua. 
-  // Filtering "My Courses" dilakukan di komponen UI (ContentManagement)
+  // Jika Guru/Admin: Return ALL.
   if (user && user.role === 'STUDENT' && user.className) {
       finalCourses = finalCourses.filter(c => c.className === user.className);
   }
 
-  // Simpan hasil merge (struktur baru + nilai lama) kembali ke LocalStorage
   setLocalData(COURSES_KEY, finalCourses);
   return finalCourses;
 };

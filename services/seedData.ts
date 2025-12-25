@@ -158,8 +158,9 @@ const createBasicCourse = (id: string, name: string, teacherId: string, moduleTi
 
 export const MOCK_COURSES: Course[] = [
   // 1. Course Matematika (Milik tch-001) - KHUSUS KELAS VIII-R
+  // PENTING: Nama 'Matematika' digunakan sebagai kunci patching jika ID berbeda dari cloud
   {
-    id: 'course-math',
+    id: 'course-math', 
     name: 'Matematika',
     teacherId: 'tch-001', // LINKED TO TEACHER 1
     className: 'VIII-R', // LINKED TO STUDENT CLASS
